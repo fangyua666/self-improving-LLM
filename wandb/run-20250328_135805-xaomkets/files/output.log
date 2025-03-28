@@ -1,0 +1,35 @@
+Starting pretraining with 100 steps, 100 eval interval
+10.631808 M parameters
+Training Progress:   0%|                                                                                                                              | 0/100 [00:13<?, ?it/s]
+Traceback (most recent call last):
+  File "/Users/yufang/self-improving-LLM/main.py", line 149, in <module>
+    main()
+  File "/Users/yufang/self-improving-LLM/main.py", line 97, in main
+    train_model(
+  File "/Users/yufang/self-improving-LLM/src/training.py", line 114, in train_model
+    losses = estimate_loss(data, model, get_batch_fn=get_batch_fn, batch_size=batch_size, block_size=block_size, device=device)['loss']
+  File "/Users/yufang/self-improving-LLM/src/training.py", line 70, in estimate_loss
+    logits, loss = model(X, Y)
+  File "/Users/yufang/miniforge3/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/Users/yufang/miniforge3/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/Users/yufang/self-improving-LLM/src/model.py", line 164, in forward
+    loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=padding_token_index)
+NameError: name 'padding_token_index' is not defined
+Traceback (most recent call last):
+  File "/Users/yufang/self-improving-LLM/main.py", line 149, in <module>
+    main()
+  File "/Users/yufang/self-improving-LLM/main.py", line 97, in main
+    train_model(
+  File "/Users/yufang/self-improving-LLM/src/training.py", line 114, in train_model
+    losses = estimate_loss(data, model, get_batch_fn=get_batch_fn, batch_size=batch_size, block_size=block_size, device=device)['loss']
+  File "/Users/yufang/self-improving-LLM/src/training.py", line 70, in estimate_loss
+    logits, loss = model(X, Y)
+  File "/Users/yufang/miniforge3/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/Users/yufang/miniforge3/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/Users/yufang/self-improving-LLM/src/model.py", line 164, in forward
+    loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=padding_token_index)
+NameError: name 'padding_token_index' is not defined

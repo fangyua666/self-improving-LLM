@@ -1,0 +1,15 @@
+{"time":"2025-03-28T14:02:21.255461-04:00","level":"INFO","msg":"stream: starting","core version":"0.19.3","symlink path":"/Users/yufang/self-improving-LLM/wandb/run-20250328_140221-tc3ecbkp/logs/debug-core.log"}
+{"time":"2025-03-28T14:02:21.366847-04:00","level":"INFO","msg":"created new stream","id":"tc3ecbkp"}
+{"time":"2025-03-28T14:02:21.367016-04:00","level":"INFO","msg":"stream: started","id":"tc3ecbkp"}
+{"time":"2025-03-28T14:02:21.367087-04:00","level":"INFO","msg":"handler: started","stream_id":"tc3ecbkp"}
+{"time":"2025-03-28T14:02:21.367302-04:00","level":"INFO","msg":"writer: Do: started","stream_id":"tc3ecbkp"}
+{"time":"2025-03-28T14:02:21.367371-04:00","level":"INFO","msg":"sender: started","stream_id":"tc3ecbkp"}
+{"time":"2025-03-28T14:02:21.611489-04:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-03-28T14:02:30.570461-04:00","level":"INFO","msg":"stream: closing","id":"tc3ecbkp"}
+{"time":"2025-03-28T14:02:30.578822-04:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-03-28T14:02:30.655043-04:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-03-28T14:02:31.134921-04:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-03-28T14:02:31.600026-04:00","level":"INFO","msg":"handler: closed","stream_id":"tc3ecbkp"}
+{"time":"2025-03-28T14:02:31.600047-04:00","level":"INFO","msg":"sender: closed","stream_id":"tc3ecbkp"}
+{"time":"2025-03-28T14:02:31.600038-04:00","level":"INFO","msg":"writer: Close: closed","stream_id":"tc3ecbkp"}
+{"time":"2025-03-28T14:02:31.600177-04:00","level":"INFO","msg":"stream: closed","id":"tc3ecbkp"}

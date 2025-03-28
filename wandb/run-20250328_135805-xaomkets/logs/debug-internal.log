@@ -1,0 +1,15 @@
+{"time":"2025-03-28T13:58:06.31263-04:00","level":"INFO","msg":"stream: starting","core version":"0.19.3","symlink path":"/Users/yufang/self-improving-LLM/wandb/run-20250328_135805-xaomkets/logs/debug-core.log"}
+{"time":"2025-03-28T13:58:06.623069-04:00","level":"INFO","msg":"created new stream","id":"xaomkets"}
+{"time":"2025-03-28T13:58:06.623126-04:00","level":"INFO","msg":"stream: started","id":"xaomkets"}
+{"time":"2025-03-28T13:58:06.623153-04:00","level":"INFO","msg":"sender: started","stream_id":"xaomkets"}
+{"time":"2025-03-28T13:58:06.623135-04:00","level":"INFO","msg":"handler: started","stream_id":"xaomkets"}
+{"time":"2025-03-28T13:58:06.623184-04:00","level":"INFO","msg":"writer: Do: started","stream_id":"xaomkets"}
+{"time":"2025-03-28T13:58:06.86965-04:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-03-28T13:58:21.793824-04:00","level":"INFO","msg":"stream: closing","id":"xaomkets"}
+{"time":"2025-03-28T13:58:21.799533-04:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-03-28T13:58:21.826105-04:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-03-28T13:58:22.820046-04:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-03-28T13:58:23.505257-04:00","level":"INFO","msg":"handler: closed","stream_id":"xaomkets"}
+{"time":"2025-03-28T13:58:23.505272-04:00","level":"INFO","msg":"writer: Close: closed","stream_id":"xaomkets"}
+{"time":"2025-03-28T13:58:23.505279-04:00","level":"INFO","msg":"sender: closed","stream_id":"xaomkets"}
+{"time":"2025-03-28T13:58:23.505389-04:00","level":"INFO","msg":"stream: closed","id":"xaomkets"}

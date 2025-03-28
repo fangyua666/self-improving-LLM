@@ -1,0 +1,15 @@
+{"time":"2025-03-28T14:03:18.601495-04:00","level":"INFO","msg":"stream: starting","core version":"0.19.3","symlink path":"/Users/yufang/self-improving-LLM/wandb/run-20250328_140318-r34vqnhh/logs/debug-core.log"}
+{"time":"2025-03-28T14:03:18.72196-04:00","level":"INFO","msg":"created new stream","id":"r34vqnhh"}
+{"time":"2025-03-28T14:03:18.722209-04:00","level":"INFO","msg":"stream: started","id":"r34vqnhh"}
+{"time":"2025-03-28T14:03:18.72263-04:00","level":"INFO","msg":"handler: started","stream_id":"r34vqnhh"}
+{"time":"2025-03-28T14:03:18.723027-04:00","level":"INFO","msg":"writer: Do: started","stream_id":"r34vqnhh"}
+{"time":"2025-03-28T14:03:18.723061-04:00","level":"INFO","msg":"sender: started","stream_id":"r34vqnhh"}
+{"time":"2025-03-28T14:03:18.919531-04:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-03-28T14:03:28.484038-04:00","level":"INFO","msg":"stream: closing","id":"r34vqnhh"}
+{"time":"2025-03-28T14:03:28.488971-04:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-03-28T14:03:28.561011-04:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-03-28T14:03:29.253179-04:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-03-28T14:03:31.708527-04:00","level":"INFO","msg":"sender: closed","stream_id":"r34vqnhh"}
+{"time":"2025-03-28T14:03:31.708475-04:00","level":"INFO","msg":"handler: closed","stream_id":"r34vqnhh"}
+{"time":"2025-03-28T14:03:31.708514-04:00","level":"INFO","msg":"writer: Close: closed","stream_id":"r34vqnhh"}
+{"time":"2025-03-28T14:03:31.713322-04:00","level":"INFO","msg":"stream: closed","id":"r34vqnhh"}

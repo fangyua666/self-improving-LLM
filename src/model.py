@@ -108,7 +108,7 @@ class Block(nn.Module):
         return x
 
 class GPT(nn.Module):
-    def __init__(self, vocab_size, block_size, n_embd, n_layer, n_head, dropout, bias=True, device=None):
+    def __init__(self, vocab_size, block_size, n_embd, n_layer, n_head, dropout, bias=True, device=None, padding_token_index=12):
         super().__init__()
         if device is None:
             self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -122,6 +122,7 @@ class GPT(nn.Module):
         self.n_head = n_head
         self.dropout = dropout
         self.bias = bias
+        self.padding_token_index = padding_token_index
 
         self.transformer = nn.ModuleDict(dict(
             wte = nn.Embedding(vocab_size, n_embd), # token embeddings
@@ -161,7 +162,7 @@ class GPT(nn.Module):
         if targets is not None:
             # if we are given some desired targets also calculate the loss
             logits = self.lm_head(x)
-            loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=padding_token_index)
+            loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=self.padding_token_index)
             # inference-time mini-optimization: only forward the lm_head on the very last position
             logits = self.lm_head(x[:, [-1], :]) # note: using list [-1] to preserve the time dim
 
