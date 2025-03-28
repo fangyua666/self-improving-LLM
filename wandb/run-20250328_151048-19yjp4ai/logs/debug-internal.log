@@ -1,0 +1,7 @@
+{"time":"2025-03-28T15:10:49.262538-04:00","level":"INFO","msg":"stream: starting","core version":"0.19.3","symlink path":"/Users/yufang/self-improving-LLM/wandb/run-20250328_151048-19yjp4ai/logs/debug-core.log"}
+{"time":"2025-03-28T15:10:49.37181-04:00","level":"INFO","msg":"created new stream","id":"19yjp4ai"}
+{"time":"2025-03-28T15:10:49.372024-04:00","level":"INFO","msg":"stream: started","id":"19yjp4ai"}
+{"time":"2025-03-28T15:10:49.372027-04:00","level":"INFO","msg":"handler: started","stream_id":"19yjp4ai"}
+{"time":"2025-03-28T15:10:49.372178-04:00","level":"INFO","msg":"sender: started","stream_id":"19yjp4ai"}
+{"time":"2025-03-28T15:10:49.372226-04:00","level":"INFO","msg":"writer: Do: started","stream_id":"19yjp4ai"}
+{"time":"2025-03-28T15:10:49.680933-04:00","level":"INFO","msg":"Starting system monitor"}

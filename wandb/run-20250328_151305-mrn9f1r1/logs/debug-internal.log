@@ -1,0 +1,7 @@
+{"time":"2025-03-28T15:13:06.044756-04:00","level":"INFO","msg":"stream: starting","core version":"0.19.3","symlink path":"/Users/yufang/self-improving-LLM/wandb/run-20250328_151305-mrn9f1r1/logs/debug-core.log"}
+{"time":"2025-03-28T15:13:06.154997-04:00","level":"INFO","msg":"created new stream","id":"mrn9f1r1"}
+{"time":"2025-03-28T15:13:06.155389-04:00","level":"INFO","msg":"stream: started","id":"mrn9f1r1"}
+{"time":"2025-03-28T15:13:06.155518-04:00","level":"INFO","msg":"writer: Do: started","stream_id":"mrn9f1r1"}
+{"time":"2025-03-28T15:13:06.15552-04:00","level":"INFO","msg":"handler: started","stream_id":"mrn9f1r1"}
+{"time":"2025-03-28T15:13:06.155645-04:00","level":"INFO","msg":"sender: started","stream_id":"mrn9f1r1"}
+{"time":"2025-03-28T15:13:06.439284-04:00","level":"INFO","msg":"Starting system monitor"}

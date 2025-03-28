@@ -1,4 +1,4 @@
-# src/utils.py
+# Helper Functions
 import random
 import numpy as np
 import torch

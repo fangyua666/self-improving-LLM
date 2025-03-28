@@ -1,4 +1,4 @@
-# src/model.py
+# GPT architecture definition
 import math
 import torch
 import torch.nn as nn

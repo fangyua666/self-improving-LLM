@@ -84,7 +84,7 @@ def train_model(
     device='cuda'
 ):
     """
-    Train a model.
+    Train a base model.
     
     Args:
         model: The model to train.

@@ -1,0 +1,52 @@
+{
+  "os": "macOS-14.3-arm64-arm-64bit",
+  "python": "CPython 3.10.14",
+  "startedAt": "2025-03-28T19:13:06.038921Z",
+  "args": [
+    "--max_iters",
+    "100",
+    "--num_samples",
+    "10000",
+    "--wandb_name",
+    "test_run"
+  ],
+  "program": "/Users/yufang/self-improving-LLM/main.py",
+  "codePath": "main.py",
+  "git": {
+    "remote": "https://github.com/fangyua666/self-improving-LLM.git",
+    "commit": "aaa634d4c4e8d9e5f4970fe15d7e022281985510"
+  },
+  "email": "fangyua@umich.edu",
+  "root": "/Users/yufang/self-improving-LLM",
+  "host": "YF.local",
+  "executable": "/Users/yufang/miniforge3/bin/python",
+  "codePathLocal": "main.py",
+  "cpu_count": 8,
+  "cpu_count_logical": 8,
+  "disk": {
+    "/": {
+      "total": "494384795648",
+      "used": "366465601536"
+    },
+    "/System/Volumes/Data": {
+      "total": "494384795648",
+      "used": "366465601536"
+    }
+  },
+  "memory": {
+    "total": "8589934592"
+  },
+  "cpu": {
+    "count": 8,
+    "countLogical": 8
+  },
+  "apple": {
+    "name": "Apple M3",
+    "ecpuCores": 4,
+    "pcpuCores": 4,
+    "gpuCores": 10,
+    "memoryGb": 8,
+    "swapTotalBytes": "4294967296",
+    "ramTotalBytes": "8589934592"
+  }
+}

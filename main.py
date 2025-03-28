@@ -5,45 +5,45 @@ import torch
 import wandb
 from src.model import GPT
 from src.data import generate_origin_dataset, get_batch
-from src.training import train_model
+from src.training import train_model # base model training: sc_model_0.pt
 from src.evaluation import test_accuracy_on_digits
 from src.utils import set_seeds, init_wandb, save_model, verify_directory
 from src.self_improvement import run_self_improvement
 from src.visualization import plot_accuracy_improvement, log_wandb_chart
 
-def parse_args():
+def parse_args(): # set up command line arguments
     parser = argparse.ArgumentParser(description="Train and perform self-improvement on a GPT model for string copying")
     
-    # Model parameters
+    # Model architecture parameters
     parser.add_argument("--n_embd", type=int, default=384, help="Embedding dimension")
     parser.add_argument("--n_head", type=int, default=6, help="Number of attention heads")
     parser.add_argument("--n_layer", type=int, default=6, help="Number of layers")
     parser.add_argument("--dropout", type=float, default=0.0, help="Dropout probability")
     parser.add_argument("--bias", action="store_true", help="Use bias in linear layers")
     
-    # Training parameters
+    # Base model training parameters
     parser.add_argument("--batch_size", type=int, default=1000, help="Batch size")
     parser.add_argument("--block_size", type=int, default=60, help="Maximum sequence length")
     parser.add_argument("--max_iters", type=int, default=5000, help="Maximum training iterations")
     parser.add_argument("--eval_interval", type=int, default=100, help="Evaluation interval")
     
-    # Self-improvement parameters
+    # Self-improvement framework parameters
     parser.add_argument("--si_rounds", type=int, default=10, help="Number of self-improvement rounds")
     parser.add_argument("--si_iter", type=int, default=1500, help="Iterations per SI round")
     parser.add_argument("--decay", type=int, default=500, help="Decay steps for scheduler")
     
-    # Data parameters
+    # Data generation parameters
     parser.add_argument("--original_digits", type=int, default=10, help="Number of original digits")
     parser.add_argument("--num_samples", type=int, default=2000000, help="Number of samples in original dataset")
     
-    # Paths
+    # Data and model saving directories
     parser.add_argument("--data_dir", type=str, default="data", help="Data directory")
     parser.add_argument("--models_dir", type=str, default="models", help="Models directory")
     
     # Run settings
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu", help="Device")
-    parser.add_argument("--skip_pretrain", action="store_true", help="Skip pretraining")
+    parser.add_argument("--skip_base_model_train", action="store_true", help="Skip base model training")
     parser.add_argument("--skip_si", action="store_true", help="Skip self-improvement")
     
     # Wandb settings
@@ -53,14 +53,14 @@ def parse_args():
     return parser.parse_args()
 
 def main():
-    args = parse_args()
-    set_seeds(args.seed)
+    args = parse_args() # parse command line arguments
+    set_seeds(args.seed) # set seeds for reproducibility
     
     # Ensure directories exist
     verify_directory(args.data_dir)
     verify_directory(args.models_dir)
     
-    # Generate original dataset
+    # Generate original dataset, 2000000 samples for base model training
     generate_origin_dataset(args.original_digits, 'copy', args.num_samples, args.data_dir)
     
     # Define model architecture
@@ -83,8 +83,8 @@ def main():
     
     run = init_wandb(args.wandb_project, config, args.wandb_name)
     
-    if not args.skip_pretrain:
-        print(f"Starting pretraining with {args.max_iters} steps, {args.eval_interval} eval interval")
+    if not args.skip_base_model_train:
+        print(f"Starting base model training with {args.max_iters} steps, {args.eval_interval} eval interval")
         
         # Initialize model
         model = GPT(vocab_size, args.block_size, args.n_embd, args.n_layer, args.n_head, args.dropout, args.bias, args.device)
@@ -93,7 +93,7 @@ def main():
         with open(os.path.join(args.data_dir, "origin_ds_copy.txt"), "r", encoding="utf-8") as f:
             data = f.readlines()
         
-        # Train model
+        # Train base model
         train_model(
             model, 
             data, 
@@ -107,14 +107,14 @@ def main():
         
         # Evaluate final performance
         print(f"Evaluating {args.original_digits+1}-digit accuracy...")
-        acc = test_accuracy_on_digits(model, args.original_digits+1)
+        acc = test_accuracy_on_digits(model, args.original_digits+1) # test the accuracy on 11-digits
         print(f"Average accuracy: {acc}")
         
-        # Save model
+        # Save the basemodel
         base_model_path = os.path.join(args.models_dir, "sc_model_0.pt")
         save_model(model, base_model_path)
     else:
-        print("Skipping pretraining...")
+        print("Skipping base model training...")
         base_model_path = os.path.join(args.models_dir, "sc_model_0.pt")
     
     if not args.skip_si:
