@@ -76,7 +76,7 @@ class CausalSelfAttention(nn.Module):
 
 # SwiGLU used in llama
 class SwiGLUFFN(nn.Module):
-    def __init__(self, n_embd: int, dropout: float = 0.0, bias: bool = False):
+    def __init__(self, n_embd: int, dropout: float = 0.0, bias: bool = True):
         super().__init__()
         d_ff = int((8/3) * n_embd)
         self.fc1 = nn.Linear(n_embd, 2 * d_ff, bias=bias)
