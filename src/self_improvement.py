@@ -82,7 +82,7 @@ def run_self_improvement(
             task='copy',
             num_samples=300000,
             batch_size=batch_size,
-            vote_threshold=0.4,
+            vote_threshold=0.6,
             max_lines_to_write=50000,
             data_dir=data_dir
         )
