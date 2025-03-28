@@ -7,7 +7,7 @@ from torch.nn import functional as F
 class LayerNorm(nn.Module):
     """ LayerNorm but with an optional bias. PyTorch doesn't support simply bias=False """
 
-    def __init__(self, ndim, bias=True):
+    def __init__(self, ndim, bias=False):
         super().__init__()
         self.weight = nn.Parameter(torch.ones(ndim))
         self.bias = nn.Parameter(torch.zeros(ndim)) if bias else None
@@ -99,7 +99,7 @@ class Block(nn.Module):
         self.ln_1 = LayerNorm(n_embd, bias=bias)
         self.attn = CausalSelfAttention(n_embd, n_head, dropout, block_size, bias=bias)
         self.ln_2 = LayerNorm(n_embd, bias=bias)
-        self.mlp = SwiGLUFFN(n_embd, dropout) # bias=bias)
+        self.mlp = SwiGLUFFN(n_embd, dropout, bias=bias)
 
     def forward(self, x):
         # Apply residual connection and pre-normalization
