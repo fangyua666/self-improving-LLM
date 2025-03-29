@@ -11,10 +11,10 @@ class LayerNorm(nn.Module):
         self.weight = nn.Parameter(torch.ones(ndim))
         self.bias = nn.Parameter(torch.zeros(ndim)) if bias else None
 
-    def forward(self, input):
+    def forward(self, input): # forward function used for layer_norm
         return F.layer_norm(input, self.weight.shape, self.weight, self.bias, 1e-6)
 
-class CausalSelfAttention(nn.Module):
+class CausalSelfAttention(nn.Module): # causal means that the attention is only allowed to look at the past tokens(autoregressive)
     def __init__(self, n_embd, n_head, dropout, block_size, bias=True):
         super().__init__()
         assert n_embd % n_head == 0, "Embedding dimension must be divisible by the number of heads."
@@ -25,9 +25,9 @@ class CausalSelfAttention(nn.Module):
         self.dropout = dropout
         self.block_size = block_size
 
-        # Key, Query, Value projections
+        # Projection for Query, Key, Value (all with same dimension n_embd) into output dimension 3*n_embd
         self.c_attn = nn.Linear(n_embd, 3 * n_embd, bias=bias)
-        # Output projection
+        # Projection for output back to the input dimension n_embd
         self.c_proj = nn.Linear(n_embd, n_embd, bias=bias)
 
         # Regularization
@@ -35,41 +35,47 @@ class CausalSelfAttention(nn.Module):
         self.resid_dropout = nn.Dropout(dropout)
 
         # Check for Flash Attention availability
-        self.flash = hasattr(torch.nn.functional, 'scaled_dot_product_attention')
+        self.flash = hasattr(torch.nn.functional, 'scaled_dot_product_attention') 
         if not self.flash:
             print("WARNING: using slow attention. Flash Attention requires PyTorch >= 2.0")
-            # Causal mask for slow attention
+            # Create a causal attention mask
             self.register_buffer(
                 "bias",
+                # Create a lower triangular matrix of ones and reshape it to (1, 1, block_size, block_size)
                 torch.tril(torch.ones(block_size, block_size)).view(1, 1, block_size, block_size)
             )
 
     def forward(self, x):
         B, T, C = x.size()  # Batch size, sequence length, embedding dimension
 
-        # Compute Q, K, V
-        q, k, v = self.c_attn(x).split(self.n_embd, dim=2)  # Split into Q, K, V (B, T, n_embd)
-
+        # x.size() is (B, T, C)
+        # self.c_attn(x) is (B, T, 3*C)
+        # dim=2 means split along the embedding dimension(C)
+        # q, k, v are (B, T, C)
+        q, k, v = self.c_attn(x).split(self.n_embd, dim=2)  
+        
         # Reshape for multi-head attention
-        k = k.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)  # (B, n_head, T, head_size)
-        q = q.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)  # (B, n_head, T, head_size)
-        v = v.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)  # (B, n_head, T, head_size)
+        # k, q, v are (B, n_head, T, embedding_size per head)
+        # Input shape: (32, 60, 384) -> (32, 6, 60, 64)
+        k = k.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)  
+        q = q.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) 
+        v = v.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)  
 
         # Flash Attention or fallback to manual implementation
         if self.flash:
             y = torch.nn.functional.scaled_dot_product_attention(
                 q, k, v,
-                attn_mask=None,
+                attn_mask=None, # no additional mask needed for causal attention
                 dropout_p=self.dropout if self.training else 0,
-                is_causal=True
+                is_causal=True # enable causal masking
             )
-        # else:
-        # Manual attention with causal masking (Commented out in original code)
 
-        # Reshape back to original format
-        y = y.transpose(1, 2).contiguous().view(B, T, C)  # Reassemble heads
+        # y has shape (B, n_head, T, embedding_size per head)
+        # y.transpose(1, 2) has shape (B, T, n_head, embedding_size per head)
+        # reshape back to (B, T, C)
+        y = y.transpose(1, 2).contiguous().view(B, T, C)  
 
-        # Output projection and residual dropout
+        # self.c_proj(y) projects y back to the input dimension n_embd
         y = self.resid_dropout(self.c_proj(y))
         return y
 
