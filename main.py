@@ -19,10 +19,10 @@ def parse_args(): # set up command line arguments
     parser.add_argument("--n_head", type=int, default=6, help="Number of attention heads")
     parser.add_argument("--n_layer", type=int, default=6, help="Number of layers")
     parser.add_argument("--dropout", type=float, default=0.0, help="Dropout probability")
-    parser.add_argument("--bias", action="store_true", help="Use bias in linear layers")
+    parser.add_argument("--bias", action="store_true", help="Use bias in linear layers") # bias=True when include --bias
     
     # Base model training parameters
-    parser.add_argument("--batch_size", type=int, default=1000, help="Batch size")
+    parser.add_argument("--batch_size", type=int, default=1024, help="Batch size")
     parser.add_argument("--block_size", type=int, default=60, help="Maximum sequence length")
     parser.add_argument("--max_iters", type=int, default=5000, help="Maximum training iterations")
     parser.add_argument("--eval_interval", type=int, default=100, help="Evaluation interval")
@@ -43,8 +43,8 @@ def parse_args(): # set up command line arguments
     # Run settings
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu", help="Device")
-    parser.add_argument("--skip_base_model_train", action="store_true", help="Skip base model training")
-    parser.add_argument("--skip_si", action="store_true", help="Skip self-improvement")
+    parser.add_argument("--skip_base_model_train", action="store_true", help="Skip base model training") # skip base model training when include --skip_base_model_train
+    parser.add_argument("--skip_si", action="store_true", help="Skip self-improvement") # skip self-improvement when include --skip_si
     
     # Wandb settings
     parser.add_argument("--wandb_project", type=str, default="transformer_si_graphs", help="W&B project name")
@@ -54,7 +54,7 @@ def parse_args(): # set up command line arguments
 
 def main():
     args = parse_args() # parse command line arguments
-    set_seeds(args.seed) # set seeds for reproducibility
+    set_seeds(args.seed) 
     
     # Ensure directories exist
     verify_directory(args.data_dir)
@@ -84,7 +84,7 @@ def main():
     run = init_wandb(args.wandb_project, config, args.wandb_name)
     
     if not args.skip_base_model_train:
-        print(f"Starting base model training with {args.max_iters} steps, {args.eval_interval} eval interval")
+        print(f"Starting base model training with {args.max_iters} steps...")
         
         # Initialize model
         model = GPT(vocab_size, args.block_size, args.n_embd, args.n_layer, args.n_head, args.dropout, args.bias, args.device)

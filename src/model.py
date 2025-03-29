@@ -2,10 +2,9 @@
 import math
 import torch
 import torch.nn as nn
-from torch.nn import functional as F
+from torch.nn import functional as F # activation, loss function, etc.
 
 class LayerNorm(nn.Module):
-    """ LayerNorm but with an optional bias. PyTorch doesn't support simply bias=False """
 
     def __init__(self, ndim, bias=False):
         super().__init__()
@@ -76,7 +75,7 @@ class CausalSelfAttention(nn.Module):
 
 # SwiGLU used in llama
 class SwiGLUFFN(nn.Module):
-    def __init__(self, n_embd: int, dropout: float = 0.0, bias: bool = True):
+    def __init__(self, n_embd: int, dropout: float = 0.0, bias: bool = False):
         super().__init__()
         d_ff = int((8/3) * n_embd)
         self.fc1 = nn.Linear(n_embd, 2 * d_ff, bias=bias)
