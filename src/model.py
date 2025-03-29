@@ -11,10 +11,11 @@ class LayerNorm(nn.Module):
         self.weight = nn.Parameter(torch.ones(ndim))
         self.bias = nn.Parameter(torch.zeros(ndim)) if bias else None
 
-    def forward(self, input): # forward function used for layer_norm
+    def forward(self, input): # forward pass
         return F.layer_norm(input, self.weight.shape, self.weight, self.bias, 1e-6)
 
-class CausalSelfAttention(nn.Module): # causal means that the attention is only allowed to look at the past tokens(autoregressive)
+class CausalSelfAttention(nn.Module): 
+    # Implement multi-head self-attention with causal masking (autoregressive, only look at past tokens)
     def __init__(self, n_embd, n_head, dropout, block_size, bias=True):
         super().__init__()
         assert n_embd % n_head == 0, "Embedding dimension must be divisible by the number of heads."
@@ -80,7 +81,7 @@ class CausalSelfAttention(nn.Module): # causal means that the attention is only 
         return y
 
 # SwiGLU used in LLaMa
-# Swish-Gated Linear Unit FFN
+# Swish-Gated Linear Unit FFN (activation function)
 # Replace the MLP/FFN in the original transofrmer architecture
 class SwiGLUFFN(nn.Module):
     def __init__(self, n_embd: int, dropout: float = 0.0, bias: bool = False):
@@ -94,31 +95,29 @@ class SwiGLUFFN(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x_proj = self.fc1(x) # (B, T, 2*d_ff)
         
-        x_proj = self.fc1(x)
+        x1, x2 = x_proj.chunk(2, dim=-1) # split the input into two halves along the last dimension
+        swish = x1 * torch.sigmoid(x1) # Swish activation function x * sigmoid(x)
         
-        x1, x2 = x_proj.chunk(2, dim=-1)
-        
-        swish = x1 * torch.sigmoid(x1)
-        
-        x = swish * x2
-        x = self.fc2(x)
+        x = swish * x2 # multiply the activated gate with the value path(x2)
+        x = self.fc2(x) # project the output back to the original input dimension
         x = self.dropout(x)
         return x
 
 class Block(nn.Module):
     def __init__(self, n_embd, n_head, dropout, block_size, bias=True):
         super().__init__()
-        # LayerNorm and CausalSelfAttention with explicit parameters
-        self.ln_1 = LayerNorm(n_embd, bias=bias)
+        
+        self.ln_1 = LayerNorm(n_embd, bias=bias) # layer norm for the input
         self.attn = CausalSelfAttention(n_embd, n_head, dropout, block_size, bias=bias)
-        self.ln_2 = LayerNorm(n_embd, bias=bias)
-        self.mlp = SwiGLUFFN(n_embd, dropout, bias=bias)
+        self.ln_2 = LayerNorm(n_embd, bias=bias) # layer norm for the output of the attention
+        self.mlp = SwiGLUFFN(n_embd, dropout, bias=bias) # SwiGLU FFN
 
     def forward(self, x):
-        # Apply residual connection and pre-normalization
-        x = x + self.attn(self.ln_1(x))  # Apply LayerNorm before attention
-        x = x + self.mlp(self.ln_2(x))   # Apply LayerNorm before MLP
+        # pre-normalization
+        x = x + self.attn(self.ln_1(x))  # residual connection (x + attention(x))
+        x = x + self.mlp(self.ln_2(x))  # residual connection (x + MLP(x))
         return x
 
 class GPT(nn.Module):
@@ -138,46 +137,55 @@ class GPT(nn.Module):
         self.bias = bias
         self.padding_token_index = padding_token_index
 
+        # nn.ModuleDict stores modules in a dictionary format
         self.transformer = nn.ModuleDict(dict(
-            wte = nn.Embedding(vocab_size, n_embd), # token embeddings
+            wte = nn.Embedding(vocab_size, n_embd), # for each token, create a learnable embedding vector of size n_embd
             drop = nn.Dropout(dropout),
-            h = nn.ModuleList([Block(n_embd, n_head, dropout, block_size, bias=bias) for _ in range(n_layer)]), # a stack of n_layer blocks
+            # nn.ModuleList stores a list of modules
+            # a stack of n_layer transformer blocks, 6 layers means 6 transformer blocks
+            h = nn.ModuleList([Block(n_embd, n_head, dropout, block_size, bias=bias) for _ in range(n_layer)]), 
             ln_f = LayerNorm(n_embd, bias=bias), # final layer norm
         ))
         self.lm_head = nn.Linear(n_embd, vocab_size, bias=False) # projects the final transformer output to the vocab size
 
-        # init all weights
+        # recursively apply the weight initialization function to all modules in the model
         self.apply(self._init_weights)
 
     def _init_weights(self, module):
+        # For linear layers (fc1, fc2, lm_head):
         if isinstance(module, nn.Linear):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
             if module.bias is not None:
-                torch.nn.init.zeros_(module.bias)
+                torch.nn.init.zeros_(module.bias) # initialize the bias to 0
+        # For embedding layers (wte)
         elif isinstance(module, nn.Embedding):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
-    def forward(self, idx, targets=None):
+    def forward(self, idx, targets=None): # idx is the input token indices [3,5,2,10,11,12]
         device = idx.device
-        b, t = idx.size()
+        b, t = idx.size() # b is the batch size, t is the sequence length
         assert t <= self.block_size, f"Cannot forward sequence of length {t}, block size is only {self.block_size}"
 
-        # forward the GPT model itself
-        tok_emb = self.transformer.wte(idx) # token embeddings of shape (b, t, n_embd)
+        # Convert token indices (idx) to token embeddings (tok_emb)
+        tok_emb = self.transformer.wte(idx)
+        # Apply dropout, only active during training
         x = self.transformer.drop(tok_emb)
-        for block in self.transformer.h:
-            x = block(x)
+        for block in self.transformer.h: # 6 transformer blocks
+            # forward pass through each transformer block
+            x = block(x) 
         x = self.transformer.ln_f(x)
-
+        # Logits are the unnormalized output scores for each token in the vocabulary, with shape (b, t, vocab_size)
+        # Linear projection to get logits for each token in the vocabulary
         logits = self.lm_head(x)
 
         loss = None
 
         if targets is not None:
-            # if we are given some desired targets also calculate the loss
             logits = self.lm_head(x)
-            loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=self.padding_token_index)
-            # inference-time mini-optimization: only forward the lm_head on the very last position
-            logits = self.lm_head(x[:, [-1], :]) # note: using list [-1] to preserve the time dim
+            loss = F.cross_entropy(logits.view(-1, logits.size(-1)), # reshape logits to (b*t, vocab_size)
+                                   targets.view(-1), # reshape targets to (b*t)
+                                   ignore_index=self.padding_token_index) # ignore the padding token
+            
+            logits = self.lm_head(x[:, [-1], :]) # select the last position from the sequence dimension for each examples in the batch
 
         return logits, loss
