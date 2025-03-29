@@ -79,19 +79,28 @@ class CausalSelfAttention(nn.Module): # causal means that the attention is only 
         y = self.resid_dropout(self.c_proj(y))
         return y
 
-# SwiGLU used in llama
+# SwiGLU used in LLaMa
+# Swish-Gated Linear Unit FFN
+# Replace the MLP/FFN in the original transofrmer architecture
 class SwiGLUFFN(nn.Module):
     def __init__(self, n_embd: int, dropout: float = 0.0, bias: bool = False):
         super().__init__()
+        # Expands the embedding dimension by 8/3
         d_ff = int((8/3) * n_embd)
+        # Project the input to twice the expanded dimension
         self.fc1 = nn.Linear(n_embd, 2 * d_ff, bias=bias)
+        # Project the expanded dimension back to the original dimension
         self.fc2 = nn.Linear(d_ff, n_embd, bias=bias)
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        
         x_proj = self.fc1(x)
+        
         x1, x2 = x_proj.chunk(2, dim=-1)
+        
         swish = x1 * torch.sigmoid(x1)
+        
         x = swish * x2
         x = self.fc2(x)
         x = self.dropout(x)
