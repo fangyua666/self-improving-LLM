@@ -4,7 +4,7 @@ import torch
 from tqdm import tqdm
 import wandb
 from .model import GPT
-from .data import load_data, get_batch, generate_prompt_OOD
+from .data import get_batch, generate_prompt_OOD
 from .generation import gen_si_data_mv, generate
 from .training import train_model, estimate_loss
 from .evaluation import test_accuracy_on_digits, save_wrong_answers

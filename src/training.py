@@ -1,4 +1,4 @@
-# src/training.py
+# Base model training
 import math
 import torch
 from torch.amp import autocast, GradScaler
@@ -21,7 +21,7 @@ def create_optimizer_and_scheduler(model, total, warm, decay):
     # AdamW
     optimizer = torch.optim.AdamW(
         model.parameters(),
-        lr=5e-4,              # learning rate
+        lr=5e-4,              
         betas=(0.9, 0.99),
         eps=1e-12,
         weight_decay=0.1
@@ -94,7 +94,7 @@ def train_model(
         batch_size (int): Batch size.
         block_size (int): Maximum sequence length.
         get_batch_fn: Function to get batches.
-        device (str): Device to place tensors on.
+        device (str): cuda
         
     Returns:
         list: List of losses during training.
@@ -119,16 +119,22 @@ def train_model(
 
         xb, yb = get_batch_fn(data, batch_size, block_size, device)
 
-        # Evaluate the loss
+        # During forward pass, use lower precision to save memory
         with autocast(device_type=device, dtype=torch.bfloat16):
-            logits, loss = model(xb, yb)
+            logits, loss = model(xb, yb) # forward pass
 
+        # clear previous gradients
         optimizer.zero_grad(set_to_none=True)
-
+        # backward pass, compute the gradient
         scaler.scale(loss).backward()
+        # update parameters based on the gradient immediately
         scaler.step(optimizer)
+        # update the scale for next iteration
         scaler.update()
-
+        # update the learning rate through the scheduler
         scheduler.step()
     
     return loss_list
+
+# Forward pass(prediction): compute the model's output given an input
+# Backward pass(Learning): compute the gradient to update the model's parameters

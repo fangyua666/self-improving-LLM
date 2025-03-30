@@ -82,7 +82,7 @@ class CausalSelfAttention(nn.Module):
 
 # SwiGLU used in LLaMa
 # Swish-Gated Linear Unit FFN (activation function)
-# Replace the MLP/FFN in the original transofrmer architecture
+# FFN with SwiGLU activation function
 class SwiGLUFFN(nn.Module):
     def __init__(self, n_embd: int, dropout: float = 0.0, bias: bool = False):
         super().__init__()
@@ -181,6 +181,7 @@ class GPT(nn.Module):
         loss = None
 
         if targets is not None:
+            # we need the full logits to compute the loss
             logits = self.lm_head(x)
             loss = F.cross_entropy(logits.view(-1, logits.size(-1)), # reshape logits to (b*t, vocab_size)
                                    targets.view(-1), # reshape targets to (b*t)
