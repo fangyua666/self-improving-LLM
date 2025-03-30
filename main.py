@@ -5,7 +5,7 @@ import torch
 import wandb
 from src.model import GPT
 from src.data import generate_origin_dataset, get_batch
-from src.training import train_model # base model training: sc_model_0.pt
+from src.training import train_model 
 from src.evaluation import test_accuracy_on_digits
 from src.utils import set_seeds, init_wandb, save_model, verify_directory
 from src.self_improvement import run_self_improvement
