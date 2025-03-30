@@ -1,10 +1,10 @@
 # Self-Improving Transformers Approach the Generalization Limit: A Governing Law of Sustainability and Collapse
 
-Recently, multiple self-improvement frameworks have been proposed to enable large language models to overcome challenges such as length generalization and to extrapolate beyond their training data. However, it remains uncertain whether these frameworks can sustain performance as problem complexity increases. In this study, we examine the limits of one such framework—employing majority voting and length fil- tering—across tasks including arithmetic and string copying. Our goal is to derive a governing law that quantifies the sustainability of these self-improvement approaches and predicts the conditions under which the model may collapse.
+Recently, multiple self-improvement frameworks have been proposed to enable large language models to overcome challenges such as length generalization and to extrapolate beyond their training data. However, it remains uncertain whether these frameworks can sustain performance as problem complexity increases. In this study, we examine the limits of one such framework—employing majority voting and length filtering—across tasks including arithmetic and string copying. Our goal is to derive a governing law that quantifies the sustainability of these self-improvement approaches and predicts the conditions under which the model may collapse.
 
 ## Overview
 
-The model follows a unique self-improvement framework:
+The model follows a unique self-improvement framework(TODO):
 1. Train a base model on 20M data
 2. Use multiple copies of the model to generate training data for longer sequences
 3. Train the model on this new data to extend its capabilities
