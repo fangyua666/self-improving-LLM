@@ -1,47 +1,60 @@
-# Self-Improving Language Model
+# Self-Improving Transformers Approach the Generalization Limit: A Governing Law of Sustainability and Collapse
 
-This project implements a self-improving transformer model that progressively learns to handle longer sequences through curriculum learning. The model starts with simple sequence copying tasks and gradually improves its capabilities through multiple rounds of self-improvement.
+Recently, multiple self-improvement frameworks have been proposed to enable large language models to overcome challenges such as length generalization and to extrapolate beyond their training data. However, it remains uncertain whether these frameworks can sustain performance as problem complexity increases. In this study, we examine the limits of one such framework—employing majority voting and length fil- tering—across tasks including arithmetic and string copying. Our goal is to derive a governing law that quantifies the sustainability of these self-improvement approaches and predicts the conditions under which the model may collapse.
 
 ## Overview
 
 The model follows a unique self-improvement framework:
-1. Train a base model on short sequences
+1. Train a base model on 20M data
 2. Use multiple copies of the model to generate training data for longer sequences
 3. Train the model on this new data to extend its capabilities
 4. Repeat the process for multiple rounds of improvement
 
-## Running in Google Colab
+## Running in Google Colab 
 
 ### Basic Setup
 
 ```python
 # Clone the repository
-!git clone https://github.com/yourusername/self-improving-LLM.git
+!git clone https://github.com/fangyua666/self-improving-LLM.git
 %cd self-improving-LLM
-
-# Install dependencies
-!pip install torch tqdm wandb matplotlib
 
 # Mount Google Drive for persistent storage
 from google.colab import drive
 drive.mount('/content/drive')
 
-# Create directories in Google Drive
+# Create directories in Google Drive (essential for self-improvement round)
 !mkdir -p /content/drive/MyDrive/self-improving-LLM/data
 !mkdir -p /content/drive/MyDrive/self-improving-LLM/models
 ```
 
 ### Training Options
 
+#### Quick Test Run
+
+For a quick test to verify everything works:
+
+```python
+# Minimal run with fewer iterations(Make sure the code works)
+!python main.py \
+  --data_dir /content/drive/MyDrive/self-improving-LLM/data \
+  --models_dir /content/drive/MyDrive/self-improving-LLM/models \
+  --max_iters 100 \
+  --si_rounds 1 \
+  --si_iter 100 \
+  --bias \
+  --wandb_name "test_run"
+```
+
 #### Full Training Pipeline
 
 ```python
-# Run complete training and self-improvement (3 rounds)
+# Run complete base model training and self-improvement round (10 rounds)
 !python main.py \
   --data_dir /content/drive/MyDrive/self-improving-LLM/data \
   --models_dir /content/drive/MyDrive/self-improving-LLM/models \
   --max_iters 5000 \
-  --si_rounds 3 \
+  --si_rounds 10 \
   --si_iter 1500 \
   --bias \
   --wandb_name "full_experiment"
@@ -63,32 +76,17 @@ drive.mount('/content/drive')
 #### Self-Improvement Only
 
 ```python
-# Run only self-improvement (requires pre-trained base model)
+# Run only self-improvement (requires pre-trained base model, sc_model_0.pt)
 !python main.py \
   --data_dir /content/drive/MyDrive/self-improving-LLM/data \
   --models_dir /content/drive/MyDrive/self-improving-LLM/models \
   --skip_base_model_train \
-  --si_rounds 3 \
+  --si_rounds 10 \
   --si_iter 1500 \
   --bias \
   --wandb_name "self_improvement_only"
 ```
 
-### Quick Test Run
-
-For a quick test to verify everything works:
-
-```python
-# Minimal run with fewer iterations
-!python main.py \
-  --data_dir /content/drive/MyDrive/self-improving-LLM/data \
-  --models_dir /content/drive/MyDrive/self-improving-LLM/models \
-  --max_iters 100 \
-  --si_rounds 1 \
-  --si_iter 100 \
-  --bias \
-  --wandb_name "test_run"
-```
 
 ## Key Parameters
 
@@ -127,4 +125,4 @@ The model is a small-scale GPT-style transformer with:
 
 ## Dataset
 
-The model trains on a sequence copy task. Initial training uses sequences of up to 10 digits, with self-improvement progressively extending to longer sequences.
+The model trains on a sequence copy task and reverse addition tasks(TODO). Initial training uses sequences of up to 10 digits, with self-improvement progressively extending to longer sequences without collapse.
