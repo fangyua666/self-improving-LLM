@@ -34,6 +34,16 @@ def accuracy_print_one(model, num_digits, need_print=False, batch_size=1000, dev
 
         # Targets should match the original prompt with the BOS token
         targets = [p.split('=')[0] + "=" + p.split('=')[0] for p in prompts]  # Keep $ in both parts
+        
+        # Debug: Print a few examples to understand what's happening
+        print("\n--- DEBUG: SAMPLE EVALUATION ---")
+        for i in range(3):  # Print 3 examples
+            print(f"PROMPT: {prompts[i]}")
+            print(f"OUTPUT: {output_batch[i]}")
+            print(f"TARGET: {targets[i]}")
+            print(f"MATCH: {output_batch[i] == targets[i]}")
+            print("---")
+            
         correct += sum([output == target for output, target in zip(output_batch, targets)])
 
         # if needed, print wrong answer
