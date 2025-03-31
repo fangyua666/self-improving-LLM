@@ -8,7 +8,7 @@ from src.data import generate_origin_dataset, get_batch
 from src.training import train_model 
 from src.evaluation import test_accuracy_on_digits
 from src.utils import set_seeds, init_wandb, save_model, verify_directory
-from src.self_improvement import run_self_improvement
+from src.self_improvement import run_self_improvement, run_self_improvement_no_filter
 from src.visualization import plot_accuracy_improvement, log_wandb_chart
 
 def parse_args(): # set up command line arguments
@@ -30,7 +30,9 @@ def parse_args(): # set up command line arguments
     # Self-improvement framework parameters
     parser.add_argument("--si_rounds", type=int, default=10, help="Number of self-improvement rounds")
     parser.add_argument("--si_iter", type=int, default=500, help="Iterations per SI round") # change to 500 for string copying
-    parser.add_argument("--decay", type=int, default=500, help="Decay steps for scheduler") # change to 500 for string copying
+    parser.add_argument("--decay", type=int, default=0, help="Decay steps for scheduler") # change to 0 for string copying
+    parser.add_argument("--si_method", type=str, default="mv", choices=["mv", "no_filter"], 
+                        help="Self-improvement method: 'mv' for majority voting, 'no_filter' for no filtering")
     
     # Data generation parameters
     parser.add_argument("--original_digits", type=int, default=10, help="Number of original digits")
@@ -120,7 +122,16 @@ def main():
     if not args.skip_si:
         # Perform self-improvement
         print("Starting self-improvement process...")
-        diff_model_performance = run_self_improvement(
+        
+        # Choose the appropriate self-improvement function based on the method
+        if args.si_method == "no_filter":
+            print("Using no-filter self-improvement method")
+            si_function = run_self_improvement_no_filter
+        else:
+            print("Using majority voting self-improvement method")
+            si_function = run_self_improvement
+            
+        diff_model_performance = si_function(
             base_model_path=base_model_path,
             num_rounds=args.si_rounds,
             batch_size=args.batch_size,
@@ -129,6 +140,7 @@ def main():
             n_head=args.n_head,
             n_layer=args.n_layer,
             dropout=args.dropout,
+            bias=args.bias,
             si_iter=args.si_iter,
             decay=args.decay,
             data_dir=args.data_dir,
