@@ -3,12 +3,16 @@ import os
 import torch
 from tqdm import tqdm
 import wandb
+import random
+from torch.amp import GradScaler
+from torch.amp import autocast
 from .model import GPT
 from .data import get_batch, generate_prompt_OOD
 from .generation import gen_si_data_mv, generate
 from .training import train_model, estimate_loss
 from .evaluation import test_accuracy_on_digits, save_wrong_answers
 from .utils import set_seeds, save_model, load_model
+from .training import create_optimizer_and_scheduler
 
 def run_self_improvement(
     base_model_path,
@@ -30,8 +34,8 @@ def run_self_improvement(
     Run self-improvement process.
     
     Args:
-        base_model_path (str): Path to base model.
-        num_rounds (int): Number of SI rounds.
+        base_model_path (str): Path to base model, sc_model_0.pt
+        num_rounds (int): Number of SI rounds
         batch_size (int): Batch size.
         block_size (int): Maximum sequence length.
         n_embd (int): Embedding dimension.
@@ -56,26 +60,27 @@ def run_self_improvement(
 
     diff_model_performance = {}
     
+    # For each round
     for si_r in range(1, num_rounds + 1):
-        # --- Update the list of pretrained models continuously ---
         updated_models = []
         for i in range(5):
             m = GPT(vocab_size, block_size, n_embd, n_layer, n_head, dropout, bias=True, device=device)
-            # For round 1, load base models; for later rounds, load updated ones.
+            # For round 1, load base models
             if si_r == 1:
                 ckpt = base_model_path
+            # For later rounds, load updated models
             else:
                 ckpt = os.path.join(models_dir, f"pretrained_model_{i}_round_{si_r-1}.pt")
             m = load_model(m, ckpt, device)
             updated_models.append(m)
-        models_pretrained = updated_models  # Now these are the continuously updated models
+        models_pretrained = updated_models 
 
-        # --- Load the main model from the previous round for training ---
+        # Load the main model from the previous round for training
         main_model = GPT(vocab_size, block_size, n_embd, n_layer, n_head, dropout, bias=True, device=device)
         main_ckpt = os.path.join(models_dir, f"sc_model_{si_r-1}.pt")
         main_model = load_model(main_model, main_ckpt, device)
 
-        # --- Generate new SI data using majority voting with updated models ---
+        # Generate new SI data using majority voting with updated models
         gen_si_data_mv(
             models=models_pretrained,
             si_round=si_r,
@@ -83,23 +88,31 @@ def run_self_improvement(
             num_samples=300000,
             batch_size=batch_size,
             vote_threshold=0.6,
-            max_lines_to_write=50000,
+            max_lines_to_write=20000,  # Reduced from 50000 to 20000
             data_dir=data_dir
         )
 
-        # --- Get combined data for training ---
+        # Get combined data for training
         data = []
+        # For round 1
         if si_r == 1:
+            # Load original data
             with open(os.path.join(data_dir, "origin_ds_copy.txt"), "r", encoding="utf-8") as f:
                 data = f.readlines()
+            # Load SI data from previous round
             with open(os.path.join(data_dir, f"si_data_r{si_r-1}.txt"), "r", encoding="utf-8") as f:
                 sub_data = f.readlines()
+                # Check the wrong answer rate of the SI data
                 wrong = 0
                 for i in range(len(sub_data)):
                     if sub_data[i][:(si_r+10)] != sub_data[i][(si_r+10+1):(si_r+10+1+si_r+10)]:
                         wrong += 1
                 print(f"This filtered file has {(wrong / len(sub_data))*100}% wrong answer.")
-                data += sub_data * (39+si_r)
+                # 2000000(original data) + (39 + 1) * 50000(SI data): thus proportion of SI data is 50%
+                # data += sub_data * (39+si_r)
+                # For 20000 SI data:
+                data += sub_data * (99+si_r)
+                
         else:
             with open(os.path.join(data_dir, f"{si_r-1}_round_combined_ds.txt"), "r", encoding="utf-8") as f:
                 data = f.readlines()
@@ -110,20 +123,20 @@ def run_self_improvement(
                     if sub_data[i][:(si_r+10)] != sub_data[i][(si_r+10+1):(si_r+10+1+si_r+10)]:
                         wrong += 1
                 print(f"This filtered file has {(wrong / len(sub_data))*100}% wrong answer.")
-                data += sub_data * (39+si_r)
+                # 2050000(original data + round 1 SI data) + (39 + 2) * 50000(SI data): thus proportion of SI data is still 50%
+                # data += sub_data * (39+si_r)
+                # For 20000 SI data:
+                data += sub_data * (99+si_r)
         
-        import random
         random.shuffle(data)
         print(f"This is round {si_r}, The data used for training has {len(data)/1e6} M rows")
 
-        # --- Training the main model ---
-        from .training import create_optimizer_and_scheduler
+        # Training the main model
         optimizer, scheduler = create_optimizer_and_scheduler(main_model, si_iter, 0, decay)
         main_model.to(device)
         print(sum(p.numel() for p in main_model.parameters())/1e6, 'M parameters')
         loss_list = []
         
-        from torch.amp import GradScaler
         scaler = GradScaler(device)
         train_step = 0
 
@@ -137,7 +150,7 @@ def run_self_improvement(
 
             xb, yb = get_batch(data, batch_size, block_size, device)
 
-            from torch.amp import autocast
+            
             with autocast(device_type=device, dtype=torch.bfloat16):
                 logits1, loss1 = main_model(xb, yb)
 
@@ -147,7 +160,7 @@ def run_self_improvement(
             scaler.update()
             scheduler.step()
 
-        print(f"Training finished for self-improve round {si_r}.\nEvaluating {10+si_r+1}-digit accuracy...")
+        print(f"Training finished for self-improvement round {si_r}.\nEvaluating {10+si_r+1}-digit accuracy...")
         acc = test_accuracy_on_digits(main_model, 10+si_r+1)
         digit_step = 10+si_r+1
         wandb.log({"Accuracy": acc, "digit_step": digit_step})
@@ -159,19 +172,23 @@ def run_self_improvement(
         # This ensures that for the next round, the majority voting models are continuously trained.
         for i in range(5):
             pretrained_save_path = os.path.join(models_dir, f"pretrained_model_{i}_round_{si_r}.pt")
-            # Here we simply copy the main model's state. Alternatively, you could train them independently.
+            # Here we simply copy the main model's state. Alternatively, you could train them independently. TODO
             save_model(main_model, pretrained_save_path)
 
-        # --- Combine data for future rounds ---
+        # Combine data for future rounds
         data_smaller, data_larger = [], []
         if si_r == 1:
+            # Load original data
             with open(os.path.join(data_dir, "origin_ds_copy.txt"), "r", encoding="utf-8") as f:
                 data_larger = f.readlines()
+            # Load SI data from previous round
             with open(os.path.join(data_dir, f"si_data_r{si_r-1}.txt"), "r", encoding="utf-8") as f:
                 data_smaller = f.readlines()
         else:
+            # For later rounds, load the combined data from previous round
             with open(os.path.join(data_dir, f"{si_r-1}_round_combined_ds.txt"), "r", encoding="utf-8") as f:
                 data_larger = f.readlines()
+            # Load SI data from previous round
             with open(os.path.join(data_dir, f"si_data_r{si_r-1}.txt"), "r", encoding="utf-8") as f:
                 data_smaller = f.readlines()
         print(f"This is round {si_r}, data larger has {len(data_larger)} rows")
@@ -185,7 +202,7 @@ def run_self_improvement(
             f.writelines([line if line.endswith("\n") else line + "\n" for line in data_new])
         print(f"{si_r}_round_combined_ds.txt has {len(data_new)} rows")
         
-        # Save performance for this round
+        # Visualization of the effectiveness of the self-improvement framework
         one_list = []
         for j in range(11, 21):
             acc = test_accuracy_on_digits(main_model, j)

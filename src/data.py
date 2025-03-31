@@ -32,17 +32,30 @@ def generate_origin_dataset(original, task, num_samples=2000000, data_dir="data"
     
     if task == 'copy':
         # With original = 10, generate random strings with length 1-10 digits
-        a_values = np.random.randint(1, original + 1, size=num_samples)
-        # For each length a, random select digits from 0-9
-        strings = ["".join(np.random.choice([str(i) for i in range(10)], size=a)) for a in a_values]  
-        target = strings
-        to_write = [f"{a}={b}&" for a, b in zip(strings, target)]
-
+        # Use a set to track unique strings
+        unique_strings = set()
+        to_write = []
+        
+        # Keep generating until we have num_samples unique strings
+        while len(unique_strings) < num_samples:
+            # Generate a batch of strings 
+            batch_size = min(100000, num_samples - len(unique_strings))
+            a_values = np.random.randint(1, original + 1, size=batch_size)
+            new_strings = ["".join(np.random.choice([str(i) for i in range(10)], size=a)) for a in a_values]
+            
+            # Add new unique strings to our set
+            for s in new_strings:
+                if s not in unique_strings and len(unique_strings) < num_samples:
+                    unique_strings.add(s)
+                    to_write.append(f"{s}={s}&")
+            
+            print(f"Generated {len(unique_strings)}/{num_samples} unique strings...")
+        
         # Write down to the txt file
         with open(file_path, "w") as f:
             f.write("\n".join(to_write))
 
-    print(f"{num_samples} original data for task {task} is saved in {file_path}")
+    print(f"{num_samples} unique original data for task {task} is saved in {file_path}")
 
 def get_batch(data, batch_size, block_size, device):
     """

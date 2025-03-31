@@ -29,8 +29,8 @@ def parse_args(): # set up command line arguments
     
     # Self-improvement framework parameters
     parser.add_argument("--si_rounds", type=int, default=10, help="Number of self-improvement rounds")
-    parser.add_argument("--si_iter", type=int, default=1500, help="Iterations per SI round")
-    parser.add_argument("--decay", type=int, default=500, help="Decay steps for scheduler")
+    parser.add_argument("--si_iter", type=int, default=1500, help="Iterations per SI round") # change to 500 for string copying
+    parser.add_argument("--decay", type=int, default=500, help="Decay steps for scheduler") # change to 0 for string copying
     
     # Data generation parameters
     parser.add_argument("--original_digits", type=int, default=10, help="Number of original digits")

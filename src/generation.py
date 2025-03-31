@@ -129,22 +129,42 @@ def gen_si_data_mv(
     # Remove any existing file to start fresh
     if os.path.exists(output_path):
         os.remove(output_path)
+        
+    # Track unique prompts and outputs
+    unique_prompts = set()
+    unique_outputs = set()
+    
+    # If the output file already exists, read existing outputs to avoid duplicates
+    if os.path.exists(output_path):
+        with open(output_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line.endswith("&"):
+                    line = line[:-1]  # Remove the '&' at the end
+                unique_outputs.add(line)
 
     for batch in range(num_batches):
         # Track how many lines have been written
-        if os.path.exists(output_path):
-            with open(output_path, "r", encoding="utf-8") as f:
-                current_lines = sum(1 for _ in f)
-        else:
-            current_lines = 0
+        current_lines = len(unique_outputs)
 
-        # Stops early if the 50000 lines are reached
+        # Stops early if the max_lines_to_write are reached
         if current_lines >= max_lines_to_write:
-            print(f"Already reached {max_lines_to_write} lines. Stopping early.")
+            print(f"Already reached {max_lines_to_write} unique lines. Stopping early.")
             break
 
-        # Create a batch of prompts for the currecnt self-improvement round
-        prompts = [generate_prompt_OOD(si_round, task, original=10) for _ in range(batch_size)]
+        # Create a batch of unique prompts for the current self-improvement round
+        prompts = []
+        attempts = 0
+        while len(prompts) < batch_size and attempts < batch_size * 3:  # Limit attempts to avoid infinite loop
+            attempts += 1
+            prompt = generate_prompt_OOD(si_round, task, original=10)
+            if prompt not in unique_prompts:
+                unique_prompts.add(prompt)
+                prompts.append(prompt)
+        
+        if not prompts:
+            print("Could not generate enough unique prompts. Consider increasing range of possible prompts.")
+            break
 
         # Collect predictions from all models.
         all_model_outputs = []
@@ -160,11 +180,15 @@ def gen_si_data_mv(
             predictions = [all_model_outputs[m_idx][i] for m_idx in range(len(models))]
             # Apply majority voting to find consensus
             best_pred = string_majority_vote_filter(predictions, vote_threshold=vote_threshold)
-            if best_pred:
-                valid_outputs.append(best_pred)
+            # Add to valid outputs only if it's unique and correct format (prompt=output)
+            if best_pred and best_pred not in unique_outputs:
+                prompt_strip = prompts[i].rstrip('=')  # Remove '=' from prompt
+                full_output = f"{prompt_strip}={best_pred}"
+                unique_outputs.add(full_output)
+                valid_outputs.append(full_output)
 
         # Write valid outputs to file, ensuring we do not exceed the target.
-        remaining = max_lines_to_write - current_lines
+        remaining = max_lines_to_write - (current_lines - len(valid_outputs))
         # if 100 space left and 150 valid, only write the first 100
         # if 100 space left and 50 valid, write all 50
         to_write = valid_outputs[:remaining]
@@ -173,7 +197,11 @@ def gen_si_data_mv(
             with open(output_path, "a", encoding="utf-8") as f:
                 f.writelines([line + "&\n" for line in to_write])
 
-        print(f"Batch {batch+1}/{num_batches}: {current_lines + len(to_write)}/{max_lines_to_write} lines written.")
+        print(f"Batch {batch+1}/{num_batches}: {len(unique_outputs)}/{max_lines_to_write} unique lines written.")
+        
+        # If we've reached our target, stop generating
+        if len(unique_outputs) >= max_lines_to_write:
+            break
 
     # Count the total number of lines written.
     if os.path.exists(output_path):
@@ -182,4 +210,4 @@ def gen_si_data_mv(
     else:
         final_lines = 0
 
-    print(f"Writing complete. Total lines written: {final_lines}")
+    print(f"Writing complete. Total unique lines written: {final_lines}")
