@@ -215,3 +215,113 @@ def gen_si_data_mv(
         final_lines = 0
 
     print(f"Writing complete. Total unique lines written: {final_lines}")
+    
+def gen_si_data_no_filter(
+    model, 
+    si_round, 
+    task, 
+    num_samples=100000, 
+    batch_size=1024, 
+    block_size=60,
+    max_lines_to_write=50000,
+    data_dir="data"
+):
+    """
+    Generate self-improvement data without filtering.
+    
+    Parameters:
+        model: The model to use for generation.
+        si_round (int): The current self-improvement round.
+        task (str): Task type, e.g., 'copy'.
+        num_samples (int): Number of samples to generate.
+        batch_size (int): Batch size for generation.
+        block_size (int): Maximum sequence length.
+        max_lines_to_write (int): Maximum number of lines to write.
+        data_dir (str): Directory to save data.
+    """
+    output_path = os.path.join(data_dir, f"si_data_r{si_round-1}.txt")
+    num_batches = (num_samples) // batch_size + 1
+    print(f"Generating SI data for round {si_round} without filtering...")
+    
+    # Remove any existing file to start fresh
+    if os.path.exists(output_path):
+        os.remove(output_path)
+    
+    # Track unique prompts and outputs
+    unique_prompts = set()
+    unique_outputs = set()
+    
+    for batch in range(num_batches):
+        # Check current file size
+        if os.path.exists(output_path):
+            with open(output_path, "r", encoding="utf-8") as f:
+                current_lines = sum(1 for _ in f)
+        else:
+            current_lines = 0
+            
+        # If we've reached the maximum, stop
+        if current_lines >= max_lines_to_write:
+            print(f"Already reached {max_lines_to_write} lines. Stopping early.")
+            break
+            
+        # Create a batch of unique prompts
+        prompts = []
+        attempts = 0
+        while len(prompts) < batch_size and attempts < batch_size * 3:
+            attempts += 1
+            prompt = generate_prompt_OOD(si_round, task, original=10)  # Will include BOS token
+            if prompt not in unique_prompts:
+                unique_prompts.add(prompt)
+                prompts.append(prompt)
+                
+        if not prompts:
+            print("Could not generate enough unique prompts. Consider increasing range of possible prompts.")
+            break
+            
+        # Encode prompts
+        encoded_prompts = [encode(p) for p in prompts]
+        prompt_tensor = torch.tensor(encoded_prompts, dtype=torch.long, device=model.device)
+        
+        # Generate outputs
+        outputs = generate(
+            model=model,
+            idx=prompt_tensor,
+            max_new_tokens=block_size,
+            top_k=1
+        )
+        
+        # Create properly formatted examples
+        valid_outputs = []
+        for i, output in enumerate(outputs):
+            # Remove $ and = from prompt to get just the input digits
+            prompt_strip = prompts[i].lstrip('$').rstrip('=')
+            full_output = f"${prompt_strip}={output}&"
+            
+            # Only add if unique
+            if full_output not in unique_outputs:
+                unique_outputs.add(full_output)
+                valid_outputs.append(full_output)
+        
+        # Calculate how many more examples we can write
+        remaining = max_lines_to_write - current_lines
+        to_write = valid_outputs[:remaining]
+        
+        # Write to file
+        if to_write:
+            with open(output_path, "a", encoding="utf-8") as f:
+                f.writelines([line + "\n" for line in to_write])
+                
+        print(f"Batch {batch+1}/{num_batches}: Written {current_lines + len(to_write)}/{max_lines_to_write} lines")
+        
+        # If we've reached our target, stop
+        if current_lines + len(to_write) >= max_lines_to_write:
+            break
+    
+    # Final count
+    if os.path.exists(output_path):
+        with open(output_path, "r", encoding="utf-8") as f:
+            final_lines = sum(1 for _ in f)
+    else:
+        final_lines = 0
+        
+    print(f"Writing complete. Total lines written: {final_lines}")

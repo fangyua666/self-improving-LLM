@@ -8,7 +8,7 @@ from torch.amp import GradScaler
 from torch.amp import autocast
 from .model import GPT
 from .data import get_batch, generate_prompt_OOD
-from .generation import gen_si_data_mv, generate
+from .generation import gen_si_data_mv, gen_si_data_no_filter
 from .training import train_model, estimate_loss
 from .evaluation import test_accuracy_on_digits, save_wrong_answers
 from .utils import set_seeds, save_model, load_model
@@ -81,14 +81,24 @@ def run_self_improvement(
         main_model = load_model(main_model, main_ckpt, device)
 
         # Generate new SI data using majority voting with updated models
-        gen_si_data_mv(
-            models=models_pretrained,
+        # gen_si_data_mv(
+        #     models=models_pretrained,
+        #     si_round=si_r,
+        #     task='copy',
+        #     num_samples=300000,
+        #     batch_size=batch_size,
+        #     vote_threshold=0.6,
+        #     max_lines_to_write=20000,  # Reduced from 50000 to 20000
+        #     data_dir=data_dir
+        # )
+        gen_si_data_no_filter(
+            model=main_model,
             si_round=si_r,
             task='copy',
-            num_samples=300000,
-            batch_size=batch_size,
-            vote_threshold=0.6,
-            max_lines_to_write=20000,  # Reduced from 50000 to 20000
+            num_samples=100000,
+            batch_size=1024,
+            block_size=60,
+            max_lines_to_write=20000,  # Adjust as needed
             data_dir=data_dir
         )
 
