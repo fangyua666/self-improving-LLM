@@ -142,7 +142,7 @@ def run_self_improvement(
         print(f"This is round {si_r}, The data used for training has {len(data)/1e6} M rows")
 
         # Training the main model
-        optimizer, scheduler = create_optimizer_and_scheduler(main_model, si_iter, 0, decay)
+        optimizer, scheduler = create_optimizer_and_scheduler(main_model, total_steps=si_iter, warmup_steps=0, decay_steps=decay)
         main_model.to(device)
         print(sum(p.numel() for p in main_model.parameters())/1e6, 'M parameters')
         loss_list = []

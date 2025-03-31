@@ -291,10 +291,17 @@ def gen_si_data_no_filter(
         # Create properly formatted examples
         valid_outputs = []
         for i, output in enumerate(outputs):
-            # Keep prompt as is with BOS token, just remove the trailing equals sign
-            prompt_str = prompts[i].rstrip('=')
-            # Ensure output format is correct
-            full_output = f"{prompt_str}={output}&"
+            # Extract the prompt digits without BOS token and equals sign
+            prompt_digits = prompts[i].lstrip('$').rstrip('=')
+            
+            # Remove any equals signs from the output to prevent duplication
+            if '=' in output:
+                output_digits = output.split('=')[-1].strip()
+            else:
+                output_digits = output.strip()
+                
+            # Create properly formatted example: $digits=digits&
+            full_output = f"${prompt_digits}={output_digits}&"
             
             # Only add if unique
             if full_output not in unique_outputs:
