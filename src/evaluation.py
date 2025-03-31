@@ -45,16 +45,16 @@ def accuracy_print_one(model, num_digits, need_print=False, batch_size=1000, dev
                 if generated_digits == input_digits:
                     correct += 1
                     
-                # Print debugging info for first few examples of first batch
-                if batch_idx == 0 and i < 3:
-                    print(f"\nPROMPT: {prompt}")
-                    print(f"INPUT DIGITS: {input_digits}")
-                    print(f"OUTPUT: {output}")
-                    print(f"GENERATED DIGITS: {generated_digits}")
-                    print(f"MATCH: {generated_digits == input_digits}")
+                # # Print debugging info for first few examples of first batch
+                # if batch_idx == 0 and i < 3:
+                #     print(f"\nPROMPT: {prompt}")
+                #     print(f"INPUT DIGITS: {input_digits}")
+                #     print(f"OUTPUT: {output}")
+                #     print(f"GENERATED DIGITS: {generated_digits}")
+                #     print(f"MATCH: {generated_digits == input_digits}")
             
-        if batch_idx == 0:
-            print(f"Batch 0: {correct}/{batch_size} correct")
+        # if batch_idx == 0:
+        #     print(f"Batch 0: {correct}/{batch_size} correct")
 
     acc = correct / total
     print(f"Accuracy for {num_digits} digits: {acc}")
