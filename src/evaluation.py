@@ -23,7 +23,7 @@ def accuracy_print_one(model, num_digits, need_print=False, batch_size=1000, dev
     
     from .data import encode
 
-    for _ in range(num_batches):
+    for batch_idx in range(num_batches):
         # Include BOS token ($) at the beginning of each prompt
         prompts = ["$" + "".join(np.random.choice([str(i) for i in range(10)], size=num_digits)) + "=" for _ in range(batch_size)]
 
@@ -32,28 +32,29 @@ def accuracy_print_one(model, num_digits, need_print=False, batch_size=1000, dev
         # output in batch
         output_batch = generate(model=model, idx=context, max_new_tokens=35, top_k=1)
 
-        # Targets should match the original prompt with the BOS token
-        targets = [p.split('=')[0] + "=" + p.split('=')[0] for p in prompts]  # Keep $ in both parts
-        
-        # Debug: Print a few examples to understand what's happening
-        print("\n--- DEBUG: SAMPLE EVALUATION ---")
-        for i in range(3):  # Print 3 examples
-            print(f"PROMPT: {prompts[i]}")
-            print(f"OUTPUT: {output_batch[i]}")
-            print(f"TARGET: {targets[i]}")
-            print(f"MATCH: {output_batch[i] == targets[i]}")
-            print("---")
+        for i, (prompt, output) in enumerate(zip(prompts, output_batch)):
+            # Get the digits without BOS token
+            input_digits = prompt.lstrip('$').rstrip('=')
             
-        correct += sum([output == target for output, target in zip(output_batch, targets)])
-
-        # if needed, print wrong answer
-        if need_print:
-            for inp, out, target in zip(prompts, output_batch, targets):
-                if out != target:
-                    print(f"   Input: {inp}")
-                    print(f"  Output: {out}")
-                    print(f"Expected: {target}")
-                    print("-----------")
+            # Check if there's an equals sign in the output
+            if '=' in output:
+                # Get part after equals sign
+                generated_digits = output.split('=')[1].strip()
+                
+                # Compare with input digits (without BOS)
+                if generated_digits == input_digits:
+                    correct += 1
+                    
+                # Print debugging info for first few examples of first batch
+                if batch_idx == 0 and i < 3:
+                    print(f"\nPROMPT: {prompt}")
+                    print(f"INPUT DIGITS: {input_digits}")
+                    print(f"OUTPUT: {output}")
+                    print(f"GENERATED DIGITS: {generated_digits}")
+                    print(f"MATCH: {generated_digits == input_digits}")
+            
+        if batch_idx == 0:
+            print(f"Batch 0: {correct}/{batch_size} correct")
 
     acc = correct / total
     print(f"Accuracy for {num_digits} digits: {acc}")
@@ -88,9 +89,8 @@ def get_avg_performance(model, num_digits):
 
 def save_wrong_answers(si_data_file, si_round, data_dir="data"):
     """
-    Reads the SI data file and saves lines where the expected answer (first si_round+10 characters)
-    does not match the generated answer (the subsequent si_round+10 characters after an '=' token)
-    into a wrong answers file.
+    Reads the SI data file and saves lines where the input digits do not match
+    the generated digits after the equals sign.
     """
     wrong_answers = []
     with open(si_data_file, "r", encoding="utf-8") as f:
@@ -98,11 +98,14 @@ def save_wrong_answers(si_data_file, si_round, data_dir="data"):
     for line in lines:
         parts = line.strip().split('=')
         if len(parts) >= 2:
-            expected = parts[0]  # The part before the equals sign (with BOS token)
-            generated = parts[1].split('&')[0]  # The part after the equals sign, before any & token
+            # Get input digits without BOS token
+            input_digits = parts[0].lstrip('$')
             
-            # Compare with BOS tokens intact
-            if expected != generated:
+            # Get generated digits
+            generated = parts[1].split('&')[0].strip()
+            
+            # Compare - should be an exact match of digits
+            if input_digits != generated:
                 wrong_answers.append(line)
     
     wrong_filename = f"{data_dir}/wrong_answers_round_{si_round}.txt"
@@ -138,22 +141,29 @@ def test_wrong_answers_accuracy(model, wrong_file, si_round, device='cuda'):
     correct_count = 0
     # Loop through each wrong answer sample.
     for line in lines:
-        # Extract the expected answer.
-        expected = line[:(si_round+10)]
-        # Ensure the BOS token is included and construct the prompt for generation
-        if not expected.startswith('$'):
-            expected = '$' + expected
-        prompt = expected + "="
-        # Encode the prompt.
-        prompt_ids = encode(prompt)
-        prompt_tensor = torch.tensor([prompt_ids], dtype=torch.long, device=device)
-        # Generate a new output using the model.
-        new_output = generate(model=model, idx=prompt_tensor, max_new_tokens=35, top_k=1)[0]
-        # Extract the generated part - now expecting full output with BOS token
-        new_generated = new_output.split('=')[0]
-        # If the new generated answer matches the expected answer, count it as corrected.
-        if new_generated == expected:
-            correct_count += 1
+        parts = line.strip().split('=')
+        if len(parts) >= 2:
+            # Extract the expected digits (without BOS token)
+            expected_digits = parts[0].lstrip('$')
+            
+            # Construct prompt with BOS
+            prompt = '$' + expected_digits + '='
+            
+            # Encode the prompt.
+            prompt_ids = encode(prompt)
+            prompt_tensor = torch.tensor([prompt_ids], dtype=torch.long, device=device)
+            
+            # Generate a new output using the model.
+            new_output = generate(model=model, idx=prompt_tensor, max_new_tokens=35, top_k=1)[0]
+            
+            # Check if the output contains an equals sign
+            if '=' in new_output:
+                # Extract generated digits after equals sign
+                generated_digits = new_output.split('=')[1].strip()
+                
+                # Compare with expected digits
+                if generated_digits == expected_digits:
+                    correct_count += 1
 
     accuracy = correct_count / total
     print(f"Evaluated {total} wrong samples; model corrected {correct_count} of them. Accuracy: {accuracy:.4f}")
