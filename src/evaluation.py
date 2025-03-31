@@ -32,8 +32,8 @@ def accuracy_print_one(model, num_digits, need_print=False, batch_size=1000, dev
         # output in batch
         output_batch = generate(model=model, idx=context, max_new_tokens=35, top_k=1)
 
-        # Targets should also include the BOS token
-        targets = [p.split('=')[0] + "=" + p.split('=')[0][1:] for p in prompts]  # Remove $ from the second part
+        # Targets should match the original prompt with the BOS token
+        targets = [p.split('=')[0] + "=" + p.split('=')[0] for p in prompts]  # Keep $ in both parts
         correct += sum([output == target for output, target in zip(output_batch, targets)])
 
         # if needed, print wrong answer
@@ -86,14 +86,12 @@ def save_wrong_answers(si_data_file, si_round, data_dir="data"):
     with open(si_data_file, "r", encoding="utf-8") as f:
         lines = f.readlines()
     for line in lines:
-        # Account for BOS token - if we're comparing parts starting after the token
-        start_pos = 1 if line.startswith('$') else 0  # Skip BOS token if present
-        # Assuming the expected answer is in the first (si_round+10) characters after BOS and
-        # the generated answer is in the substring starting after the '=' token
-        expected = line[start_pos:(start_pos+si_round+10)]
-        equals_pos = line.find('=')
-        if equals_pos != -1:
-            generated = line[(equals_pos+1):(equals_pos+1+si_round+10)]
+        parts = line.strip().split('=')
+        if len(parts) >= 2:
+            expected = parts[0]  # The part before the equals sign (with BOS token)
+            generated = parts[1].split('&')[0]  # The part after the equals sign, before any & token
+            
+            # Compare with BOS tokens intact
             if expected != generated:
                 wrong_answers.append(line)
     
@@ -141,8 +139,8 @@ def test_wrong_answers_accuracy(model, wrong_file, si_round, device='cuda'):
         prompt_tensor = torch.tensor([prompt_ids], dtype=torch.long, device=device)
         # Generate a new output using the model.
         new_output = generate(model=model, idx=prompt_tensor, max_new_tokens=35, top_k=1)[0]
-        # Extract the generated part (assumed to be of length si_round+10 immediately after the '=' token).
-        new_generated = new_output[(si_round+10+1):(si_round+10+1+si_round+10)]
+        # Extract the generated part - now expecting full output with BOS token
+        new_generated = new_output.split('=')[0]
         # If the new generated answer matches the expected answer, count it as corrected.
         if new_generated == expected:
             correct_count += 1

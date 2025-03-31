@@ -67,9 +67,7 @@ def generate(model, idx, max_new_tokens, temperature=0.00001, top_k=None):
     for seq in idx.tolist():
         text = decode(seq)
         cut_text = text.split('&')[0]  # ensure we only keep the tokens before "&"
-        # Remove BOS token if present
-        if cut_text.startswith('$'):
-            cut_text = cut_text[1:]
+        # Keep BOS token when present - don't remove it
         decoded_texts.append(cut_text)
 
     return decoded_texts
@@ -293,9 +291,10 @@ def gen_si_data_no_filter(
         # Create properly formatted examples
         valid_outputs = []
         for i, output in enumerate(outputs):
-            # Remove $ and = from prompt to get just the input digits
-            prompt_strip = prompts[i].lstrip('$').rstrip('=')
-            full_output = f"${prompt_strip}={output}&"
+            # Keep prompt as is with BOS token, just remove the trailing equals sign
+            prompt_str = prompts[i].rstrip('=')
+            # Ensure output format is correct
+            full_output = f"{prompt_str}={output}&"
             
             # Only add if unique
             if full_output not in unique_outputs:
