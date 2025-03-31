@@ -85,7 +85,7 @@ def get_batch(data, batch_size, block_size, device):
         
         # Process target sequence
         y_encoded = encode(x_str)[1:]
-        y_encoded.append(end_token_index)
+        # y_encoded.append(end_token_index)
         y_padded = y_encoded + [padding_token_index] * (block_size - len(y_encoded))
         y_list.append(torch.tensor(y_padded, dtype=torch.int64))
 

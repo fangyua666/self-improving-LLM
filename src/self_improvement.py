@@ -98,7 +98,7 @@ def run_self_improvement(
             num_samples=100000,
             batch_size=1024,
             block_size=60,
-            max_lines_to_write=20000,  # Adjust as needed
+            max_lines_to_write=50000,  # Increased from 20000 to 50000
             data_dir=data_dir
         )
 
@@ -124,9 +124,8 @@ def run_self_improvement(
                             wrong += 1
                 print(f"This filtered file has {(wrong / len(sub_data))*100:.2f}% wrong answers.")
                 # 2000000(original data) + (39 + 1) * 50000(SI data): thus proportion of SI data is 50%
-                # data += sub_data * (39+si_r)
-                # For 20000 SI data:
-                data += sub_data * (99+si_r)
+                # For 50000 SI data, use a smaller multiplier to maintain balance
+                data += sub_data * (39+si_r)
                 
         else:
             with open(os.path.join(data_dir, f"{si_r-1}_round_combined_ds.txt"), "r", encoding="utf-8") as f:
@@ -144,9 +143,8 @@ def run_self_improvement(
                             wrong += 1
                 print(f"This filtered file has {(wrong / len(sub_data))*100:.2f}% wrong answers.")
                 # 2050000(original data + round 1 SI data) + (39 + 2) * 50000(SI data): thus proportion of SI data is still 50%
-                # data += sub_data * (39+si_r)
-                # For 20000 SI data:
-                data += sub_data * (99+si_r)
+                # For 50000 SI data, use a smaller multiplier to maintain balance
+                data += sub_data * (39+si_r)
         
         random.shuffle(data)
         print(f"This is round {si_r}, The data used for training has {len(data)/1e6} M rows")
