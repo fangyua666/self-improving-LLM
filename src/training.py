@@ -5,15 +5,15 @@ from torch.amp import autocast, GradScaler
 from tqdm import tqdm
 import wandb
 
-def create_optimizer_and_scheduler(model, total, warm, decay):
+def create_optimizer_and_scheduler(model, total_steps, warmup_steps=0, decay_steps=0):
     """
     Create optimizer and learning rate scheduler.
     
     Args:
         model: The model to optimize.
-        total (int): Total number of steps.
-        warm (int): Warmup steps.
-        decay (int): Decay steps.
+        total_steps (int): Total number of steps.
+        warmup_steps (int): Number of warmup steps.
+        decay_steps (int): Number of decay steps.
         
     Returns:
         tuple: Tuple of (optimizer, scheduler).
@@ -27,16 +27,15 @@ def create_optimizer_and_scheduler(model, total, warm, decay):
         weight_decay=0.1
     )
 
-    # LR Scheduler
-    total_steps = total
-    warmup_steps = warm
-    decay_steps = decay
+    # Define stable steps
     stable_steps = total_steps - warmup_steps - decay_steps
 
     def lr_lambda(step):
+        # Linear warmup from 0->1
         if step < warmup_steps:
-            return step / warmup_steps  # Linear warmup 0->1
-        elif step < warmup_steps + stable_steps:
+            return float(step) / float(max(1, warmup_steps))
+        # Stable at 1.0
+        if step < warmup_steps + stable_steps or decay_steps <= 0:  # Handle the case when decay_steps is 0
             return 1.0                  # Stable
         else:
             # Cosine decay from 1->0
@@ -99,7 +98,12 @@ def train_model(
     Returns:
         list: List of losses during training.
     """
-    optimizer, scheduler = create_optimizer_and_scheduler(model, max_iters, 500, 1000)
+    optimizer, scheduler = create_optimizer_and_scheduler(
+        model,
+        total_steps=max_iters,
+        warmup_steps=500,
+        decay_steps=1000
+    )
     model.to(device)
     
     # Print model parameters

@@ -115,9 +115,14 @@ def run_self_improvement(
                 # Check the wrong answer rate of the SI data
                 wrong = 0
                 for i in range(len(sub_data)):
-                    if sub_data[i][:(si_r+10)] != sub_data[i][(si_r+10+1):(si_r+10+1+si_r+10)]:
-                        wrong += 1
-                print(f"This filtered file has {(wrong / len(sub_data))*100}% wrong answer.")
+                    line = sub_data[i].strip()
+                    if '=' in line:
+                        parts = line.split('=')
+                        input_digits = parts[0].lstrip('$')
+                        output_digits = parts[1].rstrip('&')
+                        if input_digits != output_digits:
+                            wrong += 1
+                print(f"This filtered file has {(wrong / len(sub_data))*100:.2f}% wrong answers.")
                 # 2000000(original data) + (39 + 1) * 50000(SI data): thus proportion of SI data is 50%
                 # data += sub_data * (39+si_r)
                 # For 20000 SI data:
@@ -130,9 +135,14 @@ def run_self_improvement(
                 sub_data = f.readlines()
                 wrong = 0
                 for i in range(len(sub_data)):
-                    if sub_data[i][:(si_r+10)] != sub_data[i][(si_r+10+1):(si_r+10+1+si_r+10)]:
-                        wrong += 1
-                print(f"This filtered file has {(wrong / len(sub_data))*100}% wrong answer.")
+                    line = sub_data[i].strip()
+                    if '=' in line:
+                        parts = line.split('=')
+                        input_digits = parts[0].lstrip('$')
+                        output_digits = parts[1].rstrip('&')
+                        if input_digits != output_digits:
+                            wrong += 1
+                print(f"This filtered file has {(wrong / len(sub_data))*100:.2f}% wrong answers.")
                 # 2050000(original data + round 1 SI data) + (39 + 2) * 50000(SI data): thus proportion of SI data is still 50%
                 # data += sub_data * (39+si_r)
                 # For 20000 SI data:
