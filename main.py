@@ -64,7 +64,7 @@ def main():
     generate_origin_dataset(args.original_digits, 'copy', args.num_samples, args.data_dir)
     
     # Define model architecture
-    vocab_size = 13  # 0-9 + '=' + '&' + '*'
+    vocab_size = 14  # 0-9 + '=' + '&' + '*' + '$'
     
     # Initialize wandb
     config = {

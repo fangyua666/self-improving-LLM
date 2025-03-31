@@ -28,7 +28,7 @@ def run_self_improvement(
     data_dir='data',
     models_dir='models',
     device='cuda',
-    vocab_size=13
+    vocab_size=14
 ):
     """
     Run self-improvement process.

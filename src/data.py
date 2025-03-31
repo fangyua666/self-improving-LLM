@@ -5,9 +5,10 @@ import numpy as np
 import torch
 
 # Define vocabulary and tokens
-vocab = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '=', '&', '*']
-padding_token_index = 12
-end_token_index = 11
+vocab = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '=', '&', '*', '$']
+padding_token_index = 12  # '*' is the padding token
+end_token_index = 11      # '&' is the end token
+bos_token_index = 13      # '$' is the beginning-of-sentence token
 
 # Create a mapping from string to interger
 stoi = {ch:i for i, ch in enumerate(vocab)}
@@ -47,7 +48,7 @@ def generate_origin_dataset(original, task, num_samples=2000000, data_dir="data"
             for s in new_strings:
                 if s not in unique_strings and len(unique_strings) < num_samples:
                     unique_strings.add(s)
-                    to_write.append(f"{s}={s}&")
+                    to_write.append(f"${s}={s}&")  # Added $ at the beginning
             
             print(f"Generated {len(unique_strings)}/{num_samples} unique strings...")
         
@@ -70,7 +71,7 @@ def get_batch(data, batch_size, block_size, device):
     Returns:
         tuple: Tuple containing input and target tensors.
     """
-    # Randomly select 1024 samples from the dataset
+    # Randomly select batch_size samples from the dataset
     final_sample = random.sample(data, batch_size)
     final_sample = [line.strip() for line in final_sample]
 
@@ -106,7 +107,7 @@ def generate_prompt_OOD(si_round, task, original):
     """
     if task == 'copy':
         strings = "".join(np.random.choice([str(i) for i in range(10)], size=si_round+original))
-        prompt_str = f"{str(strings)}="  # e.g. '1235455='
+        prompt_str = f"${str(strings)}="  # Added $ at the beginning, e.g. '$1235455='
 
     return prompt_str
 

@@ -24,14 +24,16 @@ def accuracy_print_one(model, num_digits, need_print=False, batch_size=1000, dev
     from .data import encode
 
     for _ in range(num_batches):
-        prompts = ["".join(np.random.choice([str(i) for i in range(10)], size=num_digits)) + "=" for _ in range(batch_size)]  # random generate strings
+        # Include BOS token ($) at the beginning of each prompt
+        prompts = ["$" + "".join(np.random.choice([str(i) for i in range(10)], size=num_digits)) + "=" for _ in range(batch_size)]
 
         context = torch.tensor([encode(inp) for inp in prompts], dtype=torch.long, device=device)
 
         # output in batch
         output_batch = generate(model=model, idx=context, max_new_tokens=35, top_k=1)
 
-        targets = [p + p[:-1] for p in prompts]
+        # Targets should also include the BOS token
+        targets = [p.split('=')[0] + "=" + p.split('=')[0][1:] for p in prompts]  # Remove $ from the second part
         correct += sum([output == target for output, target in zip(output_batch, targets)])
 
         # if needed, print wrong answer
@@ -84,12 +86,17 @@ def save_wrong_answers(si_data_file, si_round, data_dir="data"):
     with open(si_data_file, "r", encoding="utf-8") as f:
         lines = f.readlines()
     for line in lines:
-        # Assuming the expected answer is in the first (si_round+10) characters and
-        # the generated answer is in the substring starting at index (si_round+10+1)
-        expected = line[:(si_round+10)]
-        generated = line[(si_round+10+1):(si_round+10+1+si_round+10)]
-        if expected != generated:
-            wrong_answers.append(line)
+        # Account for BOS token - if we're comparing parts starting after the token
+        start_pos = 1 if line.startswith('$') else 0  # Skip BOS token if present
+        # Assuming the expected answer is in the first (si_round+10) characters after BOS and
+        # the generated answer is in the substring starting after the '=' token
+        expected = line[start_pos:(start_pos+si_round+10)]
+        equals_pos = line.find('=')
+        if equals_pos != -1:
+            generated = line[(equals_pos+1):(equals_pos+1+si_round+10)]
+            if expected != generated:
+                wrong_answers.append(line)
+    
     wrong_filename = f"{data_dir}/wrong_answers_round_{si_round}.txt"
     with open(wrong_filename, "w", encoding="utf-8") as f:
         f.writelines(wrong_answers)
@@ -125,7 +132,9 @@ def test_wrong_answers_accuracy(model, wrong_file, si_round, device='cuda'):
     for line in lines:
         # Extract the expected answer.
         expected = line[:(si_round+10)]
-        # Construct the prompt for generation.
+        # Ensure the BOS token is included and construct the prompt for generation
+        if not expected.startswith('$'):
+            expected = '$' + expected
         prompt = expected + "="
         # Encode the prompt.
         prompt_ids = encode(prompt)

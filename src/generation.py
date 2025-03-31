@@ -5,7 +5,7 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 import os
-from .data import encode, decode, generate_prompt_OOD
+from .data import encode, decode, generate_prompt_OOD, bos_token_index
 
 @torch.no_grad()
 def generate(model, idx, max_new_tokens, temperature=0.00001, top_k=None):
@@ -67,6 +67,9 @@ def generate(model, idx, max_new_tokens, temperature=0.00001, top_k=None):
     for seq in idx.tolist():
         text = decode(seq)
         cut_text = text.split('&')[0]  # ensure we only keep the tokens before "&"
+        # Remove BOS token if present
+        if cut_text.startswith('$'):
+            cut_text = cut_text[1:]
         decoded_texts.append(cut_text)
 
     return decoded_texts
@@ -182,8 +185,9 @@ def gen_si_data_mv(
             best_pred = string_majority_vote_filter(predictions, vote_threshold=vote_threshold)
             # Add to valid outputs only if it's unique and correct format (prompt=output)
             if best_pred and best_pred not in unique_outputs:
-                prompt_strip = prompts[i].rstrip('=')  # Remove '=' from prompt
-                full_output = f"{prompt_strip}={best_pred}"
+                # Remove $ and = from prompt to get just the input digits
+                prompt_strip = prompts[i].lstrip('$').rstrip('=')
+                full_output = f"${prompt_strip}={best_pred}&"
                 unique_outputs.add(full_output)
                 valid_outputs.append(full_output)
 
@@ -195,7 +199,7 @@ def gen_si_data_mv(
 
         if to_write:
             with open(output_path, "a", encoding="utf-8") as f:
-                f.writelines([line + "&\n" for line in to_write])
+                f.writelines([line + "\n" for line in to_write])
 
         print(f"Batch {batch+1}/{num_batches}: {len(unique_outputs)}/{max_lines_to_write} unique lines written.")
         
