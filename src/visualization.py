@@ -63,7 +63,6 @@ def plot_wrong_answers_accuracy(evaluation_data):
     )
     
     return fig
-
 def log_wandb_chart(fig, name):
     """
     Log a Plotly figure to W&B.
