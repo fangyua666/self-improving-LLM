@@ -84,8 +84,12 @@ def get_batch(data, batch_size, block_size, device):
         x_list.append(torch.tensor(x_padded, dtype=torch.int64))
         
         # Process target sequence
-        y_encoded = encode(x_str)[1:]
-        # y_encoded.append(end_token_index)
+        y_encoded = encode(x_str)[1:]  # Skip BOS token
+        
+        # Ensure proper sequence ending
+        if not (y_encoded and y_encoded[-1] == end_token_index):
+            y_encoded.append(end_token_index)
+        
         y_padded = y_encoded + [padding_token_index] * (block_size - len(y_encoded))
         y_list.append(torch.tensor(y_padded, dtype=torch.int64))
 
@@ -107,7 +111,7 @@ def generate_prompt_OOD(si_round, task, original):
     """
     if task == 'copy':
         strings = "".join(np.random.choice([str(i) for i in range(10)], size=si_round+original))
-        prompt_str = f"${str(strings)}="  # Added $ at the beginning, e.g. '$1235455='
+        prompt_str = f"${str(strings)}="  
 
     return prompt_str
 
