@@ -33,10 +33,10 @@ def create_optimizer_and_scheduler(model, total_steps, warmup_steps=0, decay_ste
     def lr_lambda(step):
         # Linear warmup from 0->1
         if step < warmup_steps:
-            return float(step) / float(max(1, warmup_steps))
+            return step / warmup_steps
         # Stable at 1.0
-        if step < warmup_steps + stable_steps or decay_steps <= 0:  # Handle the case when decay_steps is 0
-            return 1.0                  # Stable
+        elif step < warmup_steps + stable_steps:
+            return 1.0
         else:
             # Cosine decay from 1->0
             decay_ratio = (step - warmup_steps - stable_steps) / decay_steps
