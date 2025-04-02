@@ -5,7 +5,7 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 import os
-from .data import encode, decode, generate_prompt_OOD, bos_token_index
+from .data import encode, decode, generate_prompt_OOD
 
 @torch.no_grad()
 def generate(model, idx, max_new_tokens, temperature=0.00001, top_k=None):
@@ -67,7 +67,6 @@ def generate(model, idx, max_new_tokens, temperature=0.00001, top_k=None):
     for seq in idx.tolist():
         text = decode(seq)
         cut_text = text.split('&')[0]  # ensure we only keep the tokens before "&"
-        # Keep BOS token when present - don't remove it
         decoded_texts.append(cut_text)
 
     return decoded_texts
@@ -184,8 +183,8 @@ def gen_si_data_mv(
             # Add to valid outputs only if it's unique and correct format (prompt=output)
             if best_pred and best_pred not in unique_outputs:
                 # Remove $ and = from prompt to get just the input digits
-                prompt_strip = prompts[i].lstrip('$').rstrip('=')
-                full_output = f"${prompt_strip}={best_pred}&"
+                prompt_strip = prompts[i].rstrip('=')
+                full_output = f"{prompt_strip}={best_pred}&"
                 unique_outputs.add(full_output)
                 valid_outputs.append(full_output)
 
@@ -267,7 +266,7 @@ def gen_si_data_no_filter(
         attempts = 0
         while len(prompts) < batch_size and attempts < batch_size * 3:
             attempts += 1
-            prompt = generate_prompt_OOD(si_round, task, original=10)  # Will include BOS token
+            prompt = generate_prompt_OOD(si_round, task, original=10)  # No longer includes BOS token
             if prompt not in unique_prompts:
                 unique_prompts.add(prompt)
                 prompts.append(prompt)
@@ -291,8 +290,8 @@ def gen_si_data_no_filter(
         # Create properly formatted examples
         valid_outputs = []
         for i, output in enumerate(outputs):
-            # Extract the prompt digits without BOS token and equals sign
-            prompt_digits = prompts[i].lstrip('$').rstrip('=')
+            # Extract the prompt digits without equals sign
+            prompt_digits = prompts[i].rstrip('=')
             
             # Remove any equals signs from the output to prevent duplication
             if '=' in output:
@@ -300,8 +299,8 @@ def gen_si_data_no_filter(
             else:
                 output_digits = output.strip()
                 
-            # Create properly formatted example: $digits=digits&
-            full_output = f"${prompt_digits}={output_digits}&"
+            # Create properly formatted example: digits=digits&
+            full_output = f"{prompt_digits}={output_digits}&"
             
             # Only add if unique
             if full_output not in unique_outputs:

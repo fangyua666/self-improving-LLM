@@ -109,7 +109,7 @@ def run_self_improvement(
                     line = sub_data[i].strip()
                     if '=' in line:
                         parts = line.split('=')
-                        input_digits = parts[0].lstrip('$')
+                        input_digits = parts[0]
                         output_digits = parts[1].rstrip('&')
                         if input_digits != output_digits:
                             wrong += 1
@@ -128,7 +128,7 @@ def run_self_improvement(
                     line = sub_data[i].strip()
                     if '=' in line:
                         parts = line.split('=')
-                        input_digits = parts[0].lstrip('$')
+                        input_digits = parts[0]
                         output_digits = parts[1].rstrip('&')
                         if input_digits != output_digits:
                             wrong += 1
@@ -303,7 +303,7 @@ def run_self_improvement_no_filter(
                     line = sub_data[i].strip()
                     if '=' in line:
                         parts = line.split('=')
-                        input_digits = parts[0].lstrip('$')
+                        input_digits = parts[0]
                         output_digits = parts[1].rstrip('&')
                         if input_digits != output_digits:
                             wrong += 1
@@ -321,7 +321,7 @@ def run_self_improvement_no_filter(
                     line = sub_data[i].strip()
                     if '=' in line:
                         parts = line.split('=')
-                        input_digits = parts[0].lstrip('$')
+                        input_digits = parts[0]
                         output_digits = parts[1].rstrip('&')
                         if input_digits != output_digits:
                             wrong += 1

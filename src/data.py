@@ -5,10 +5,9 @@ import numpy as np
 import torch
 
 # Define vocabulary and tokens
-vocab = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '=', '&', '*', '$']
+vocab = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '=', '&', '*']
 padding_token_index = 12  # '*' is the padding token
 end_token_index = 11      # '&' is the end token
-bos_token_index = 13      # '$' is the beginning-of-sentence token
 
 # Create a mapping from string to interger
 stoi = {ch:i for i, ch in enumerate(vocab)}
@@ -48,7 +47,7 @@ def generate_origin_dataset(original, task, num_samples=2000000, data_dir="data"
             for s in new_strings:
                 if s not in unique_strings and len(unique_strings) < num_samples:
                     unique_strings.add(s)
-                    to_write.append(f"${s}={s}&")  # Added $ at the beginning
+                    to_write.append(f"{s}={s}&")  # Removed $ at the beginning
             
             print(f"Generated {len(unique_strings)}/{num_samples} unique strings...")
         
@@ -84,7 +83,7 @@ def get_batch(data, batch_size, block_size, device):
         x_list.append(torch.tensor(x_padded, dtype=torch.int64))
         
         # Process target sequence
-        y_encoded = encode(x_str)[1:]  # Skip BOS token
+        y_encoded = encode(x_str)[1:] 
         
         # Ensure proper sequence ending
         if not (y_encoded and y_encoded[-1] == end_token_index):
@@ -111,7 +110,7 @@ def generate_prompt_OOD(si_round, task, original):
     """
     if task == 'copy':
         strings = "".join(np.random.choice([str(i) for i in range(10)], size=si_round+original))
-        prompt_str = f"${str(strings)}="  
+        prompt_str = f"{str(strings)}="  # Removed $ at the beginning
 
     return prompt_str
 

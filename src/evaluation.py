@@ -24,8 +24,8 @@ def accuracy_print_one(model, num_digits, need_print=False, batch_size=1000, dev
     from .data import encode
 
     for batch_idx in range(num_batches):
-        # Include BOS token ($) at the beginning of each prompt
-        prompts = ["$" + "".join(np.random.choice([str(i) for i in range(10)], size=num_digits)) + "=" for _ in range(batch_size)]
+        # No BOS token at the beginning of each prompt
+        prompts = ["".join(np.random.choice([str(i) for i in range(10)], size=num_digits)) + "=" for _ in range(batch_size)]
 
         context = torch.tensor([encode(inp) for inp in prompts], dtype=torch.long, device=device)
 
@@ -34,7 +34,7 @@ def accuracy_print_one(model, num_digits, need_print=False, batch_size=1000, dev
 
         for i, (prompt, output) in enumerate(zip(prompts, output_batch)):
             # Get the digits without BOS token
-            input_digits = prompt.lstrip('$').rstrip('=')
+            input_digits = prompt.rstrip('=')
             
             # Check if there's an equals sign in the output
             if '=' in output:
@@ -99,7 +99,7 @@ def save_wrong_answers(si_data_file, si_round, data_dir="data"):
         parts = line.strip().split('=')
         if len(parts) >= 2:
             # Get input digits without BOS token
-            input_digits = parts[0].lstrip('$')
+            input_digits = parts[0]
             
             # Get generated digits
             generated = parts[1].split('&')[0].strip()
@@ -144,10 +144,10 @@ def test_wrong_answers_accuracy(model, wrong_file, si_round, device='cuda'):
         parts = line.strip().split('=')
         if len(parts) >= 2:
             # Extract the expected digits (without BOS token)
-            expected_digits = parts[0].lstrip('$')
+            expected_digits = parts[0]
             
-            # Construct prompt with BOS
-            prompt = '$' + expected_digits + '='
+            # Construct prompt without BOS
+            prompt = expected_digits + '='
             
             # Encode the prompt.
             prompt_ids = encode(prompt)
