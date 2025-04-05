@@ -110,7 +110,7 @@ def generate_prompt_OOD(si_round, task, original):
     """
     if task == 'copy':
         strings = "".join(np.random.choice([str(i) for i in range(10)], size=si_round+original))
-        prompt_str = f"{str(strings)}="  # Removed $ at the beginning
+        prompt_str = f"{str(strings)}="  
 
     return prompt_str
 

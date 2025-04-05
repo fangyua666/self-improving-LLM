@@ -23,6 +23,7 @@ def run_self_improvement(
     n_head=6,
     n_layer=6,
     dropout=0.0,
+    bias=True,
     si_iter=1500,
     decay=500,
     data_dir='data',
@@ -42,6 +43,7 @@ def run_self_improvement(
         n_head (int): Number of attention heads.
         n_layer (int): Number of layers.
         dropout (float): Dropout probability.
+        bias (bool): Whether to use bias.
         si_iter (int): Self-improvement iterations.
         decay (int): Decay steps.
         data_dir (str): Data directory.
@@ -64,7 +66,7 @@ def run_self_improvement(
     for si_r in range(1, num_rounds + 1):
         updated_models = []
         for i in range(5):
-            m = GPT(vocab_size, block_size, n_embd, n_layer, n_head, dropout, bias=True, device=device)
+            m = GPT(vocab_size, block_size, n_embd, n_layer, n_head, dropout, bias=bias, device=device)
             # For round 1, load base models
             if si_r == 1:
                 ckpt = base_model_path
@@ -76,7 +78,7 @@ def run_self_improvement(
         models_pretrained = updated_models 
 
         # Load the main model from the previous round for training
-        main_model = GPT(vocab_size, block_size, n_embd, n_layer, n_head, dropout, bias=True, device=device)
+        main_model = GPT(vocab_size, block_size, n_embd, n_layer, n_head, dropout, bias=bias, device=device)
         main_ckpt = os.path.join(models_dir, f"sc_model_{si_r-1}.pt")
         main_model = load_model(main_model, main_ckpt, device)
 
