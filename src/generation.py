@@ -84,253 +84,22 @@ def string_majority_vote_filter(list_of_strings, vote_threshold=0.6):
         # ["123", "123", "124", "123", "125"] → {"123": 3, "124": 1, "125": 1}, create a dict
         freq[s] = freq.get(s, 0) + 1
 
-    best_str, best_count = None, 0
-    for text, count in freq.items():
-        # {"123": 3, "124": 1, "125": 1} → best_str = "123", best_count = 3
-        if count > best_count:
-            best_str = text
-            best_count = count
+    # best_str, best_count = None, 0
+    # for text, count in freq.items():
+    #     # {"123": 3, "124": 1, "125": 1} → best_str = "123", best_count = 3
+    #     if count > best_count:
+    #         best_str = text
+    #         best_count = count
+    max_key = max(freq, key=freq.get)
+    max_value = freq[max_key]
 
     needed_votes = math.ceil(vote_threshold * len(list_of_strings)) # 0.6 * 5 = 3
-    if best_count >= needed_votes:
-        return best_str
+    if max_value >= needed_votes:
+        return max_key
     else:
         return None
 
-def gen_si_data_mv(
-    models,
-    si_round,
-    task,
-    num_samples=300000,
-    batch_size=1024,
-    vote_threshold=0.6,  
-    max_lines_to_write=50000,
-    data_dir="data"
-):
-    """
-    Generate self-improvement data using majority voting plus length filtering.
-    This version generates num_samples outputs in batches, and after each batch,
-    it checks how many valid outputs have been written to file.
-    
-    Parameters:
-        models (list): List of models to use for majority voting.
-        si_round (int): The current self-improvement round.
-        task (str): copy or reverse addition.
-        num_samples (int): The total number of samples to generate.
-        batch_size (int): The number of samples to generate in each batch.
-        vote_threshold (float): The threshold for majority voting.
-        max_lines_to_write (int): The maximum number of lines to write to the output file.
-        data_dir (str): The directory to save the generated data.
-    """
-    output_path = os.path.join(data_dir, f"si_data_r{si_round-1}.txt")
-    num_batches = (num_samples) // batch_size + 1
-    print(f"Generating SI data for round {si_round} with majority voting...")
 
-    # Remove any existing file to start fresh
-    if os.path.exists(output_path):
-        os.remove(output_path)
-        
-    # Track unique prompts and outputs
-    unique_prompts = set()
-    unique_outputs = set()
-    
-    # If the output file already exists, read existing outputs to avoid duplicates
-    if os.path.exists(output_path):
-        with open(output_path, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if line.endswith("&"):
-                    line = line[:-1]  # Remove the '&' at the end
-                unique_outputs.add(line)
-
-    for batch in range(num_batches):
-        # Track how many lines have been written
-        current_lines = len(unique_outputs)
-
-        # Stops early if the max_lines_to_write are reached
-        if current_lines >= max_lines_to_write:
-            print(f"Already reached {max_lines_to_write} unique lines. Stopping early.")
-            break
-
-        # Create a batch of unique prompts for the current self-improvement round
-        prompts = []
-        attempts = 0
-        while len(prompts) < batch_size and attempts < batch_size * 3:  # Limit attempts to avoid infinite loop
-            attempts += 1
-            prompt = generate_prompt_OOD(si_round, task, original=10)
-            if prompt not in unique_prompts:
-                unique_prompts.add(prompt)
-                prompts.append(prompt)
-        
-        if not prompts:
-            print("Could not generate enough unique prompts. Consider increasing range of possible prompts.")
-            break
-
-        # Collect predictions from all models.
-        all_model_outputs = []
-        for model in models:
-            encoded = [encode(p) for p in prompts]
-            prompt_tensor = torch.tensor(encoded, dtype=torch.long, device=model.device)
-            outputs = generate(model=model, idx=prompt_tensor, max_new_tokens=35, top_k=1)
-            all_model_outputs.append(outputs)
-
-        valid_outputs = []
-        # For each prompt, collect predictions from all models
-        for i in range(len(prompts)):
-            predictions = [all_model_outputs[m_idx][i] for m_idx in range(len(models))]
-            # Apply majority voting to find consensus
-            best_pred = string_majority_vote_filter(predictions, vote_threshold=vote_threshold)
-            # Add to valid outputs only if it's unique and correct format (prompt=output)
-            if best_pred and best_pred not in unique_outputs:
-                # Remove $ and = from prompt to get just the input digits
-                prompt_strip = prompts[i].rstrip('=')
-                full_output = f"{prompt_strip}={best_pred}&"
-                unique_outputs.add(full_output)
-                valid_outputs.append(full_output)
-
-        # Write valid outputs to file, ensuring we do not exceed the target.
-        remaining = max_lines_to_write - (current_lines - len(valid_outputs))
-        # if 100 space left and 150 valid, only write the first 100
-        # if 100 space left and 50 valid, write all 50
-        to_write = valid_outputs[:remaining]
-
-        if to_write:
-            with open(output_path, "a", encoding="utf-8") as f:
-                f.writelines([line + "\n" for line in to_write])
-
-        print(f"Batch {batch+1}/{num_batches}: {len(unique_outputs)}/{max_lines_to_write} unique lines written.")
-        
-        # If we've reached our target, stop generating
-        if len(unique_outputs) >= max_lines_to_write:
-            break
-
-    # Count the total number of lines written.
-    if os.path.exists(output_path):
-        with open(output_path, "r", encoding="utf-8") as f:
-            final_lines = sum(1 for _ in f)
-    else:
-        final_lines = 0
-
-    print(f"Writing complete. Total unique lines written: {final_lines}")
-    
-# def gen_si_data_no_filter(
-#     model, 
-#     si_round, 
-#     task, 
-#     num_samples=100000, 
-#     batch_size=1024, 
-#     block_size=60,
-#     max_lines_to_write=50000,
-#     data_dir="data"
-# ):
-#     """
-#     Generate self-improvement data without filtering.
-    
-#     Parameters:
-#         model: The model to use for generation.
-#         si_round (int): The current self-improvement round.
-#         task (str): Task type, e.g., 'copy'.
-#         num_samples (int): Number of samples to generate.
-#         batch_size (int): Batch size for generation.
-#         block_size (int): Maximum sequence length.
-#         max_lines_to_write (int): Maximum number of lines to write.
-#         data_dir (str): Directory to save data.
-#     """
-#     output_path = os.path.join(data_dir, f"si_data_r{si_round-1}.txt")
-#     num_batches = (num_samples) // batch_size + 1
-#     print(f"Generating SI data for round {si_round} without filtering...")
-    
-#     # Remove any existing file to start fresh
-#     if os.path.exists(output_path):
-#         os.remove(output_path)
-    
-#     # Track unique prompts and outputs
-#     unique_prompts = set()
-#     unique_outputs = set()
-    
-#     for batch in range(num_batches):
-#         # Check current file size
-#         if os.path.exists(output_path):
-#             with open(output_path, "r", encoding="utf-8") as f:
-#                 current_lines = sum(1 for _ in f)
-#         else:
-#             current_lines = 0
-            
-#         # If we've reached the maximum, stop
-#         if current_lines >= max_lines_to_write:
-#             print(f"Already reached {max_lines_to_write} lines. Stopping early.")
-#             break
-            
-#         # Create a batch of unique prompts
-#         prompts = []
-#         attempts = 0
-#         while len(prompts) < batch_size and attempts < batch_size * 3:
-#             attempts += 1
-#             prompt = generate_prompt_OOD(si_round, task, original=10)  # No longer includes BOS token
-#             if prompt not in unique_prompts:
-#                 unique_prompts.add(prompt)
-#                 prompts.append(prompt)
-                
-#         if not prompts:
-#             print("Could not generate enough unique prompts. Consider increasing range of possible prompts.")
-#             break
-            
-#         # Encode prompts
-#         encoded_prompts = [encode(p) for p in prompts]
-#         prompt_tensor = torch.tensor(encoded_prompts, dtype=torch.long, device=model.device)
-        
-#         # Generate outputs
-#         outputs = generate(
-#             model=model,
-#             idx=prompt_tensor,
-#             max_new_tokens=block_size,
-#             top_k=1
-#         )
-        
-#         # Create properly formatted examples
-#         valid_outputs = []
-#         for i, output in enumerate(outputs):
-#             # Extract the prompt digits without equals sign
-#             prompt_digits = prompts[i].rstrip('=')
-            
-#             # Remove any equals signs from the output to prevent duplication
-#             if '=' in output:
-#                 output_digits = output.split('=')[-1].strip()
-#             else:
-#                 output_digits = output.strip()
-                
-#             # Create properly formatted example: digits=digits&
-#             full_output = f"{prompt_digits}={output_digits}&"
-            
-#             # Only add if unique
-#             if full_output not in unique_outputs:
-#                 unique_outputs.add(full_output)
-#                 valid_outputs.append(full_output)
-        
-#         # Calculate how many more examples we can write
-#         remaining = max_lines_to_write - current_lines
-#         to_write = valid_outputs[:remaining]
-        
-#         # Write to file
-#         if to_write:
-#             with open(output_path, "a", encoding="utf-8") as f:
-#                 f.writelines([line + "\n" for line in to_write])
-                
-#         print(f"Batch {batch+1}/{num_batches}: Written {current_lines + len(to_write)}/{max_lines_to_write} lines")
-        
-#         # If we've reached our target, stop
-#         if current_lines + len(to_write) >= max_lines_to_write:
-#             break
-    
-#     # Final count
-#     if os.path.exists(output_path):
-#         with open(output_path, "r", encoding="utf-8") as f:
-#             final_lines = sum(1 for _ in f)
-#     else:
-#         final_lines = 0
-        
-#     print(f"Writing complete. Total lines written: {final_lines}")
-    
     
 def gen_si_data_no_filter(
     model, 
@@ -468,3 +237,91 @@ def gen_si_data_length_filter(
             f.writelines([line + "&\n" for line in to_write])
 
     print(f"Writing complete.")
+
+def gen_si_data_mv(
+    models,
+    si_round,
+    task,
+    num_samples=300000,
+    batch_size=1024,
+    vote_threshold=0.6,  
+    max_lines_to_write=50000,
+    data_dir="data"
+):
+    """
+    Generate self-improvement data using majority voting plus length filtering.
+    This version generates num_samples outputs in batches, and after each batch,
+    it checks how many valid outputs have been written to file.
+    
+    Parameters:
+        models (list): List of models to use for majority voting.
+        si_round (int): The current self-improvement round.
+        task (str): copy or reverse addition.
+        num_samples (int): The total number of samples to generate.
+        batch_size (int): The number of samples to generate in each batch.
+        vote_threshold (float): The threshold for majority voting.
+        max_lines_to_write (int): The maximum number of lines to write to the output file.
+        data_dir (str): The directory to save the generated data.
+    """
+    output_path = os.path.join(data_dir, f"si_data_r{si_round-1}.txt")
+    num_batches = (num_samples) // batch_size + 1
+    print(f"Generating SI data for round {si_round} with majority voting...")
+
+    # Remove any existing file to start fresh
+    if os.path.exists(output_path):
+        os.remove(output_path)
+        
+
+    for batch in range(num_batches):
+        # Track how many lines have been written
+        if os.path.exists(output_path):
+            with open(output_path, "r", encoding="utf-8") as f:
+                current_lines = sum(1 for _ in f)
+        else:
+            current_lines = 0
+
+        # Stops early if the max_lines_to_write are reached
+        if current_lines >= max_lines_to_write:
+            print(f"Already reached {max_lines_to_write} unique lines. Stopping early.")
+            break
+        # 1. Generate a batch of prompts.
+        prompts = [generate_prompt_OOD(si_round, task, original=10) for _ in range(batch_size)]
+
+        # Collect predictions from all models.
+        all_model_outputs = []
+        for model in models:
+            encoded = [encode(p) for p in prompts]
+            prompt_tensor = torch.tensor(encoded, dtype=torch.long, device=model.device)
+            outputs = generate(model=model, idx=prompt_tensor, max_new_tokens=35, top_k=1)
+            all_model_outputs.append(outputs)
+
+       # 3. Process each prompt: apply majority voting
+        valid_outputs = []
+        for i in range(len(prompts)):
+            # Gather predictions for the i-th prompt.
+            predictions = [all_model_outputs[m_idx][i] for m_idx in range(len(models))]
+            best_pred = string_majority_vote_filter(predictions, vote_threshold=vote_threshold)
+            if best_pred: #  and len(best_pred[(si_round+11):]) == (si_round+10) # NO length filtering now
+                valid_outputs.append(best_pred)
+
+        # Write valid outputs to file, ensuring we do not exceed the target.
+        remaining = max_lines_to_write - current_lines
+        # if 100 space left and 150 valid, only write the first 100
+        # if 100 space left and 50 valid, write all 50
+        to_write = valid_outputs[:remaining]
+
+        if to_write:
+            with open(output_path, "a", encoding="utf-8") as f:
+                f.writelines([line + "&\n" for line in to_write]) # KEY CHANGE
+
+        print(f"Batch {batch+1}/{num_batches}: {current_lines + len(to_write)}/{max_lines_to_write} lines written.")
+
+    # Count the total number of lines written.
+    if os.path.exists(output_path):
+        with open(output_path, "r", encoding="utf-8") as f:
+            final_lines = sum(1 for _ in f)
+    else:
+        final_lines = 0
+
+    print(f"Writing complete. Total unique lines written: {final_lines}")
+ 
