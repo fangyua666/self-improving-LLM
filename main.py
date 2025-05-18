@@ -5,7 +5,7 @@ import torch
 import wandb
 from src.model import GPT
 from src.data import generate_origin_dataset, get_batch
-from src.training import train_model 
+from src.training import train_base_model 
 from src.evaluation import test_accuracy_on_digits
 from src.utils import set_seeds, init_wandb, save_model, verify_directory
 from src.self_improvement import run_self_improvement, run_self_improvement_no_filter
@@ -96,7 +96,7 @@ def main():
             data = f.readlines()
         
         # Train base model
-        train_model(
+        train_base_model(
             model, 
             data, 
             max_iters=args.max_iters, 

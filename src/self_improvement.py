@@ -9,7 +9,7 @@ from torch.amp import autocast
 from .model import GPT
 from .data import get_batch, generate_prompt_OOD
 from .generation import gen_si_data_mv, gen_si_data_no_filter
-from .training import train_model, estimate_loss
+from .training import train_base_model, estimate_loss
 from .evaluation import test_accuracy_on_digits, save_wrong_answers
 from .utils import set_seeds, save_model, load_model
 from .training import create_optimizer_and_scheduler

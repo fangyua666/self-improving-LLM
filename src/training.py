@@ -72,7 +72,7 @@ def estimate_loss(data, model, eval_iters=100, get_batch_fn=None, batch_size=102
     model.train()
     return out
 
-def train_model(
+def train_base_model(
     model, 
     data, 
     max_iters=5000, 
