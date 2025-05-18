@@ -137,7 +137,7 @@ def run_self_improvement_no_filter(
 
         for iter in tqdm(range(si_iter), desc="Training Progress"):
             if iter % 100 == 0 or iter == si_iter - 1:
-                losses = estimate_loss(data, main_model, get_batch_fn=get_batch, batch_size=batch_size, block_size=block_size, device=device)['loss']
+                losses = estimate_loss(data, main_model, batch_size=batch_size, block_size=block_size, device=device)['loss']
                 print(f"step {iter}: loss {losses:.4f}")
                 loss_list.append(round(losses.item(), 4))
                 wandb.log({"train_loss": losses.item(), "train_step": train_step})
@@ -339,7 +339,7 @@ def run_self_improvement_mv(
 
         for iter in tqdm(range(si_iter), desc="Training Progress"):
             if iter % 100 == 0 or iter == si_iter - 1:
-                losses = estimate_loss(data, main_model, get_batch_fn=get_batch, batch_size=batch_size, block_size=block_size, device=device)['loss']
+                losses = estimate_loss(data, main_model, batch_size=batch_size, block_size=block_size, device=device)['loss']
                 print(f"step {iter}: loss {losses:.4f}")
                 loss_list.append(round(losses.item(), 4))
                 wandb.log({"train_loss": losses.item(), "train_step": train_step})

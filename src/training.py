@@ -50,7 +50,7 @@ def create_optimizer_and_scheduler(model, total_steps, warmup_steps=0, decay_ste
     scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lr_lambda)
     return optimizer, scheduler
 
-def estimate_loss(data, model, eval_iters=100, get_batch_fn=None, batch_size=1024, block_size=60, device='cuda'):
+def estimate_loss(data, model, eval_iters=100, batch_size=1024, block_size=60, device='cuda'):
     """
     Estimate the loss of a model on data.
     
@@ -70,7 +70,7 @@ def estimate_loss(data, model, eval_iters=100, get_batch_fn=None, batch_size=102
     model.eval()
     losses = torch.zeros(eval_iters)
     for k in range(eval_iters):
-        X, Y = get_batch_fn(data, batch_size, block_size, device)
+        X, Y = get_batch(data, batch_size, block_size, device)
         logits, loss = model(X, Y)
         losses[k] = loss.item()
     out['loss'] = losses.mean()
