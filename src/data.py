@@ -44,7 +44,7 @@ def generate_origin_dataset(original, task, num_samples=2000000, data_dir="data"
 
     print(f"{num_samples} original data for task {task} is saved in {file_path}")
 
-def get_batch(data, batch_size, block_size, device):
+def get_batch(data, batch_size=1024, block_size=64, device='cuda'):
     """
     Get a random batch of data.
     
