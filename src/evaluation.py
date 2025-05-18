@@ -31,30 +31,19 @@ def accuracy_print_one(model, num_digits, need_print=False, batch_size=1000, dev
 
         # output in batch
         output_batch = generate(model=model, idx=context, max_new_tokens=35, top_k=1)
+        
+        
+        targets = [p + p[:-1] for p in prompts]
+        correct += sum([output == target for output, target in zip(output_batch, targets)])
 
-        for i, (prompt, output) in enumerate(zip(prompts, output_batch)):
-            # Get the digits without BOS token
-            input_digits = prompt.rstrip('=')
-            
-            # Check if there's an equals sign in the output
-            if '=' in output:
-                # Get part after equals sign
-                generated_digits = output.split('=')[1].strip()
-                
-                # Compare with input digits (without BOS)
-                if generated_digits == input_digits:
-                    correct += 1
-                    
-                # # Print debugging info for first few examples of first batch
-                # if batch_idx == 0 and i < 3:
-                #     print(f"\nPROMPT: {prompt}")
-                #     print(f"INPUT DIGITS: {input_digits}")
-                #     print(f"OUTPUT: {output}")
-                #     print(f"GENERATED DIGITS: {generated_digits}")
-                #     print(f"MATCH: {generated_digits == input_digits}")
-            
-        # if batch_idx == 0:
-        #     print(f"Batch 0: {correct}/{batch_size} correct")
+        # if needed, print wrong answer
+        if need_print:
+            for inp, out, target in zip(prompts, output_batch, targets):
+                if out != target:
+                    print(f"   Input: {inp}")
+                    print(f"  Output: {out}")
+                    print(f"Expected: {target}")
+                    print("-----------")
 
     acc = correct / total
     print(f"Accuracy for {num_digits} digits: {acc}")

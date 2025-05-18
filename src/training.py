@@ -4,6 +4,11 @@ import torch
 from torch.amp import autocast, GradScaler
 from tqdm import tqdm
 import wandb
+from .utils import set_seeds
+from src.model import GPT
+from src.data import get_batch
+import os
+from src.evaluation import test_accuracy_on_digits
 
 def create_optimizer_and_scheduler(model, total_steps, warmup_steps=0, decay_steps=0):
     """
@@ -73,72 +78,183 @@ def estimate_loss(data, model, eval_iters=100, get_batch_fn=None, batch_size=102
     return out
 
 def train_base_model(
-    model, 
-    data, 
-    max_iters=5000, 
-    eval_interval=100, 
-    batch_size=1024, 
-    block_size=60, 
-    get_batch_fn=None,
+    vocab_size,
+    block_size,
+    n_embd,
+    n_layer,
+    n_head,
+    dropout,
+    bias=True,
+    max_iters=5000,
+    eval_interval=100,
+    data_path=None,
+    save_path=None,
     device='cuda'
 ):
     """
     Train a base model.
     
     Args:
-        model: The model to train.
-        data: The data to train on.
+        vocab_size (int): Vocabulary size.
+        block_size (int): Maximum sequence length.
+        n_embd (int): Embedding dimension.
+        n_head (int): Number of attention heads.
+        n_layer (int): Number of layers.
+        dropout (float): Dropout probability.
+        bias (bool): Whether to use bias in linear layers.
         max_iters (int): Maximum number of iterations.
         eval_interval (int): Evaluation interval.
-        batch_size (int): Batch size.
-        block_size (int): Maximum sequence length.
-        get_batch_fn: Function to get batches.
-        device (str): cuda
-        
+        data_path (str): Path to the data file.
+        save_path (str): Path to save the model.
+        device (str): Device to use ('cuda' or 'cpu').
+    
     Returns:
         list: List of losses during training.
     """
-    optimizer, scheduler = create_optimizer_and_scheduler(
-        model,
-        total_steps=max_iters,
-        warmup_steps=500,
-        decay_steps=1000
-    )
-    model.to(device)
     
-    # Print model parameters
+    print(f"Start run pretrain train loop with {max_iters} steps and 500 warm, 1000 decay")
+    
+    # INITIALIZE MODEL, OPTIMIZER, SCHEDULER
+    model = GPT(vocab_size, block_size, n_embd, n_layer, n_head, dropout, bias=bias)
+    model = model.to(device)
+    
+    # Load data
+    with open(data_path, "r", encoding="utf-8") as f:
+        data = f.readlines()
+    
+    optimizer, scheduler = create_optimizer_and_scheduler(model, max_iters, 500, 1000)
+    
+    # TRAINING LOOP:
+    # Print the number of parameters in the model
     print(sum(p.numel() for p in model.parameters())/1e6, 'M parameters')
     loss_list = []
-
+    
     scaler = GradScaler(device)
     for iter in tqdm(range(max_iters), desc="Training Progress"):
         # Sample a batch of data
         # Every once in a while evaluate the loss on train and val sets
         if iter % eval_interval == 0 or iter == max_iters - 1:
-            losses = estimate_loss(data, model, get_batch_fn=get_batch_fn, batch_size=batch_size, block_size=block_size, device=device)['loss']
+            losses = estimate_loss(data, model)['loss']
             print(f"step {iter}: loss {losses:.4f}")
             log_dict = {"Loss": losses}
             loss_list.append(round(losses.item(), 4))
             wandb.log(log_dict)
-
-        xb, yb = get_batch_fn(data, batch_size, block_size, device)
-
-        # During forward pass, use lower precision to save memory
+        
+        xb, yb = get_batch(data)
+        
+        # Evaluate the loss
         with autocast(device_type=device, dtype=torch.bfloat16):
-            logits, loss = model(xb, yb) # forward pass
-
-        # clear previous gradients
+            logits, loss = model(xb, yb)
+        
         optimizer.zero_grad(set_to_none=True)
-        # backward pass, compute the gradient
+        
         scaler.scale(loss).backward()
-        # update parameters based on the gradient immediately
         scaler.step(optimizer)
-        # update the scale for next iteration
         scaler.update()
-        # update the learning rate through the scheduler
+        
         scheduler.step()
     
-    return loss_list
+    print(f"Training finished for pretrain.\nEvaluating 11-digit accuracy...")
+    
+    # Evaluate final performance on digit addition
+    acc = test_accuracy_on_digits(model, 11)
+    print(f"Average accuracy: {acc}")
+    
+    # Save the model
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    torch.save(model.state_dict(), save_path)
+    print(f"Saved best model at {save_path}")
+    
+    return model
 
-# Forward pass(prediction): compute the model's output given an input
-# Backward pass(Learning): compute the gradient to update the model's parameters
+def train_multiple_base_models(
+    vocab_size, 
+    block_size, 
+    n_embd, 
+    n_layer, 
+    n_head, 
+    dropout, 
+    bias=True, 
+    max_iters=5000, 
+    eval_interval=100, 
+    data_path=None,
+    models_dir=None, 
+    device='cuda'
+):
+    """
+    Train 5 base models with different seeds for majority voting.
+    
+    Args:
+        vocab_size (int): Vocabulary size.
+        block_size (int): Maximum sequence length.
+        n_embd (int): Embedding dimension.
+        n_head (int): Number of attention heads.
+        n_layer (int): Number of layers.
+        dropout (float): Dropout probability.
+        bias (bool): Whether to use bias in linear layers.
+        max_iters (int): Maximum training iterations.
+        eval_interval (int): Evaluation interval.
+        data_path (str): Path to the data file.
+        models_dir (str): Directory to save models.
+        device (str): Device to use.
+    """
+    
+    print(f"Start run pretrain train loop with {max_iters} steps and 500 warm, 1000 decay")
+    print("This is the base model training loop for the 5 pretrained models used in majority voting")
+    
+    # Load data
+    with open(data_path, "r", encoding="utf-8") as f:
+        data = f.readlines()
+    
+    seeds = [42, 123, 456, 789, 1024]
+    
+    for i in range(1, 6):
+        current_seed = seeds[i-1]
+        set_seeds(current_seed)
+        print(f"Training model {i} with seed {current_seed}")
+        
+        # INITIALIZE MODEL, OPTIMIZER, SCHEDULER
+        model = GPT(vocab_size, block_size, n_embd, n_layer, n_head, dropout, bias=bias)
+        model = model.to(device)
+        optimizer, scheduler = create_optimizer_and_scheduler(model, max_iters, 500, 1000)
+        
+        # TRAINING LOOP:
+        # Print the number of parameters in the model
+        print(sum(p.numel() for p in model.parameters())/1e6, 'M parameters')
+        loss_list = []
+        
+        scaler = GradScaler(device)
+        for iter in tqdm(range(max_iters), desc="Training Progress"):
+            # Sample a batch of data
+            # Every once in a while evaluate the loss on train and val sets
+            if iter % eval_interval == 0 or iter == max_iters - 1:
+                losses = estimate_loss(data, model)['loss']
+                print(f"step {iter}: loss {losses:.4f}")
+                log_dict = {"Loss": losses}
+                loss_list.append(round(losses.item(), 4))
+                wandb.log(log_dict)
+            
+            xb, yb = get_batch(data)
+            
+            # Evaluate the loss
+            with autocast(device_type=device, dtype=torch.bfloat16):
+                logits, loss = model(xb, yb)
+            
+            optimizer.zero_grad(set_to_none=True)
+            
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
+            
+            scheduler.step()
+        
+        print(f"Training finished for pretrain.\nEvaluating 11-digit accuracy...")
+        
+        # Evaluate final performance on digit addition
+        acc = test_accuracy_on_digits(model, 11)
+        print(f"Average accuracy: {acc}")
+        
+        filename = f"sc_model_0_{i}.pt"
+        save_path = os.path.join(models_dir, filename)
+        torch.save(model.state_dict(), save_path)
+        print(f"Saved model at {save_path}")

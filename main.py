@@ -8,8 +8,9 @@ from src.data import generate_origin_dataset, get_batch
 from src.training import train_base_model 
 from src.evaluation import test_accuracy_on_digits
 from src.utils import set_seeds, init_wandb, save_model, verify_directory
-from src.self_improvement import run_self_improvement, run_self_improvement_no_filter
+from src.self_improvement import run_self_improvement_mv, run_self_improvement_no_filter
 from src.visualization import plot_accuracy_improvement, log_wandb_chart
+from src.training import train_multiple_base_models
 
 def parse_args(): # set up command line arguments
     parser = argparse.ArgumentParser(description="Train and perform self-improvement on a GPT model for string copying")
@@ -85,36 +86,36 @@ def main():
     
     run = init_wandb(args.wandb_project, config, args.wandb_name)
     
-    if not args.skip_base_model_train:
-        print(f"Starting base model training with {args.max_iters} steps...")
-        
-        # Initialize model
-        model = GPT(vocab_size, args.block_size, args.n_embd, args.n_layer, args.n_head, args.dropout, args.bias, args.device)
-        
-        # Load data
-        with open(os.path.join(args.data_dir, "origin_ds_copy.txt"), "r", encoding="utf-8") as f:
-            data = f.readlines()
-        
-        # Train base model
-        train_base_model(
-            model, 
-            data, 
+    if args.train_multiple_base:
+        train_multiple_base_models(
+            vocab_size=vocab_size, 
+            block_size=args.block_size, 
+            n_embd=args.n_embd, 
+            n_layer=args.n_layer, 
+            n_head=args.n_head, 
+            dropout=args.dropout, 
+            bias=args.bias, 
             max_iters=args.max_iters, 
             eval_interval=args.eval_interval, 
-            batch_size=args.batch_size, 
-            block_size=args.block_size, 
-            get_batch_fn=get_batch,
+            data_path=os.path.join(args.data_dir, "origin_ds_copy.txt"),
+            models_dir=os.path.join(args.models_dir, "models_for_mv"), 
             device=args.device
         )
-        
-        # Evaluate final performance
-        print(f"Evaluating {args.original_digits+1}-digit accuracy...")
-        acc = test_accuracy_on_digits(model, args.original_digits+1) # test the accuracy on 11-digits
-        print(f"Average accuracy: {acc}")
-        
-        # Save the basemodel
-        base_model_path = os.path.join(args.models_dir, "sc_model_0.pt")
-        save_model(model, base_model_path)
+    if not args.skip_base_model_train:
+        model = train_base_model(
+            vocab_size=vocab_size,
+            block_size=args.block_size,
+            n_embd=args.n_embd,
+            n_layer=args.n_layer,
+            n_head=args.n_head,
+            dropout=args.dropout,
+            bias=args.bias,
+            max_iters=args.max_iters,
+            eval_interval=args.eval_interval,
+            data_path=os.path.join(args.data_dir, "origin_ds_copy.txt"),
+            save_path=os.path.join(args.models_dir, "sc_model_0.pt"),
+            device=args.device
+        )
     else:
         print("Skipping base model training...")
         base_model_path = os.path.join(args.models_dir, "sc_model_0.pt")
@@ -129,7 +130,7 @@ def main():
             si_function = run_self_improvement_no_filter
         else:
             print("Using majority voting self-improvement method")
-            si_function = run_self_improvement
+            si_function = run_self_improvement_mv
             
         diff_model_performance = si_function(
             base_model_path=base_model_path,
