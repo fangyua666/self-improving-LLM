@@ -5,14 +5,13 @@ import torch
 import wandb
 from src.model import GPT
 from src.data import generate_origin_dataset, get_batch
-from src.training import train_base_model 
+from src.training import train_base_model, train_multiple_base_models
 from src.evaluation import test_accuracy_on_digits
 from src.utils import set_seeds, init_wandb, save_model, verify_directory
 from src.self_improvement import run_self_improvement_mv, run_self_improvement_no_filter
 from src.visualization import plot_accuracy_improvement, log_wandb_chart
-from src.training import train_multiple_base_models
 
-def parse_args(): # set up command line arguments
+def parse_args():
     parser = argparse.ArgumentParser(description="Train and perform self-improvement on a GPT model for string copying")
     
     # Model architecture parameters
@@ -20,7 +19,7 @@ def parse_args(): # set up command line arguments
     parser.add_argument("--n_head", type=int, default=6, help="Number of attention heads")
     parser.add_argument("--n_layer", type=int, default=6, help="Number of layers")
     parser.add_argument("--dropout", type=float, default=0.0, help="Dropout probability")
-    parser.add_argument("--bias", action="store_true", help="Use bias in linear layers") # bias=True when include --bias
+    parser.add_argument("--bias", action="store_true", help="Use bias in linear layers")
     
     # Base model training parameters
     parser.add_argument("--batch_size", type=int, default=1024, help="Batch size")
@@ -46,8 +45,9 @@ def parse_args(): # set up command line arguments
     # Run settings
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu", help="Device")
-    parser.add_argument("--skip_base_model_train", action="store_true", help="Skip base model training") # skip base model training when include --skip_base_model_train
-    parser.add_argument("--skip_si", action="store_true", help="Skip self-improvement") # skip self-improvement when include --skip_si
+    parser.add_argument("--skip_base_model_train", action="store_true", help="Skip base model training")
+    parser.add_argument("--skip_si", action="store_true", help="Skip self-improvement")
+    parser.add_argument("--train_multiple_base", action="store_true", help="Train multiple base models for majority voting")
     
     # Wandb settings
     parser.add_argument("--wandb_project", type=str, default="transformer_si_graphs", help="W&B project name")
@@ -56,7 +56,7 @@ def parse_args(): # set up command line arguments
     return parser.parse_args()
 
 def main():
-    args = parse_args() # parse command line arguments
+    args = parse_args()
     set_seeds(args.seed) 
     
     # Ensure directories exist
@@ -86,7 +86,12 @@ def main():
     
     run = init_wandb(args.wandb_project, config, args.wandb_name)
     
+    # Train multiple base models if requested
     if args.train_multiple_base:
+        print("Training multiple base models for majority voting...")
+        mv_models_dir = os.path.join(args.models_dir, "models_for_mv")
+        verify_directory(mv_models_dir)
+        
         train_multiple_base_models(
             vocab_size=vocab_size, 
             block_size=args.block_size, 
@@ -98,10 +103,14 @@ def main():
             max_iters=args.max_iters, 
             eval_interval=args.eval_interval, 
             data_path=os.path.join(args.data_dir, "origin_ds_copy.txt"),
-            models_dir=os.path.join(args.models_dir, "models_for_mv"), 
+            models_dir=mv_models_dir, 
             device=args.device
         )
+    
+    # Train single base model if not skipped
     if not args.skip_base_model_train:
+        print(f"Starting base model training with {args.max_iters} steps...")
+        
         model = train_base_model(
             vocab_size=vocab_size,
             block_size=args.block_size,
@@ -116,24 +125,31 @@ def main():
             save_path=os.path.join(args.models_dir, "sc_model_0.pt"),
             device=args.device
         )
+        base_model_path = os.path.join(args.models_dir, "sc_model_0.pt")
     else:
         print("Skipping base model training...")
         base_model_path = os.path.join(args.models_dir, "sc_model_0.pt")
     
+    # Perform self-improvement if not skipped
     if not args.skip_si:
-        # Perform self-improvement
         print("Starting self-improvement process...")
         
         # Choose the appropriate self-improvement function based on the method
         if args.si_method == "no_filter":
             print("Using no-filter self-improvement method")
             si_function = run_self_improvement_no_filter
+            model_path_for_si = base_model_path
         else:
             print("Using majority voting self-improvement method")
             si_function = run_self_improvement_mv
+            if args.train_multiple_base:
+                # For majority voting, we need to specify the directory with the 5 pretrained models
+                model_path_for_si = os.path.join(args.models_dir, "models_for_mv")
+            else:
+                model_path_for_si = base_model_path
             
         diff_model_performance = si_function(
-            base_model_path=base_model_path,
+            base_model_path=model_path_for_si,
             num_rounds=args.si_rounds,
             batch_size=args.batch_size,
             block_size=args.block_size,
