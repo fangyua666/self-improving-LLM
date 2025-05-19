@@ -47,10 +47,7 @@ def parse_args():
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu", help="Device")
     parser.add_argument("--skip_base_model_train", action="store_true", help="Skip base model training")
     parser.add_argument("--skip_si", action="store_true", help="Skip self-improvement")
-    parser.add_argument("--train_base_for_mv", action="store_true", help="Train 5 base models for majority voting")
-    parser.add_argument("--mv_models_dir", type=str, default=None, 
-                   help="Directory with pre-trained models for majority voting (bypasses train_multiple_base)")
-
+    parser.add_argument("--train_multiple_base", action="store_true", help="Train multiple base models for majority voting")
     
     # Wandb settings
     parser.add_argument("--wandb_project", type=str, default="transformer_si_graphs", help="W&B project name")
@@ -90,8 +87,8 @@ def main():
     run = init_wandb(args.wandb_project, config, args.wandb_name)
     
     # Train multiple base models if requested
-    if args.train_base_for_mv:
-        print("Training 5 base models for majority voting...")
+    if args.train_multiple_base:
+        print("Training multiple base models for majority voting...")
         mv_models_dir = os.path.join(args.models_dir, "models_for_mv")
         verify_directory(mv_models_dir)
         
@@ -149,9 +146,6 @@ def main():
         if args.si_method == "mv":
             print("Using majority voting self-improvement method")
             si_function = run_self_improvement_mv
-            if args.mv_models_dir:
-                print(f"Using pre-trained models from: {args.mv_models_dir}")
-                model_path_for_si = args.mv_models_dir
             if args.train_multiple_base:
                 # For majority voting, we need to specify the directory with the 5 pretrained models
                 model_path_for_si = os.path.join(args.models_dir, "models_for_mv")
