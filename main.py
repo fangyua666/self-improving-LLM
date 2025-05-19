@@ -149,18 +149,12 @@ def main():
         if args.si_method == "mv":
             print("Using majority voting self-improvement method")
             si_function = run_self_improvement_mv
-            
-            # Use pre-specified MV models directory if provided
             if args.mv_models_dir:
                 print(f"Using pre-trained models from: {args.mv_models_dir}")
                 model_path_for_si = args.mv_models_dir
-            # Otherwise use the trained models if train_multiple_base is True
-            elif args.train_multiple_base:
+            if args.train_multiple_base:
+                # For majority voting, we need to specify the directory with the 5 pretrained models
                 model_path_for_si = os.path.join(args.models_dir, "models_for_mv")
-            # Otherwise use a single model (this might not work as intended for MV)
-            else:
-                print("WARNING: Using majority voting with a single model. This may not work as expected.")
-                model_path_for_si = base_model_path
             
         si_function(
             base_model_path=model_path_for_si,
