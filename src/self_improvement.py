@@ -337,7 +337,7 @@ def run_self_improvement_length_filter(
         
         
 def run_self_improvement_mv(
-    base_models_dir,
+    base_model_path,
     num_rounds=10,
     num_models=5,
     batch_size=1024,
