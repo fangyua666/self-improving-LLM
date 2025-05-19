@@ -8,7 +8,7 @@ from src.data import generate_origin_dataset, get_batch
 from src.training import train_base_model, train_multiple_base_models
 from src.evaluation import test_accuracy_on_digits
 from src.utils import set_seeds, init_wandb, save_model, verify_directory
-from src.self_improvement import run_self_improvement_mv, run_self_improvement_no_filter
+from src.self_improvement import run_self_improvement_mv, run_self_improvement_no_filter, run_self_improvement_length_filter
 from src.visualization import plot_accuracy_improvement, log_wandb_chart
 
 def parse_args():
@@ -31,8 +31,8 @@ def parse_args():
     parser.add_argument("--si_rounds", type=int, default=10, help="Number of self-improvement rounds")
     parser.add_argument("--si_iter", type=int, default=1500, help="Iterations per SI round") 
     parser.add_argument("--decay", type=int, default=500, help="Decay steps for scheduler") 
-    parser.add_argument("--si_method", type=str, default="mv", choices=["mv", "no_filter"], 
-                        help="Self-improvement method: 'mv' for majority voting, 'no_filter' for no filtering")
+    parser.add_argument("--si_method", type=str, default="mv", choices=["mv", "no_filter", "length_filter"], 
+                        help="Self-improvement method: 'mv' for majority voting, 'no_filter' for no filtering, 'length_filter' for length filtering")
     
     # Data generation parameters
     parser.add_argument("--original_digits", type=int, default=10, help="Number of original digits")
@@ -139,16 +139,18 @@ def main():
             print("Using no-filter self-improvement method")
             si_function = run_self_improvement_no_filter
             model_path_for_si = base_model_path
-        else:
+        if args.si_method == "length_filter":
+            print("Using length-filter self-improvement method")
+            si_function = run_self_improvement_length_filter
+            model_path_for_si = base_model_path
+        if args.si_method == "mv":
             print("Using majority voting self-improvement method")
             si_function = run_self_improvement_mv
             if args.train_multiple_base:
                 # For majority voting, we need to specify the directory with the 5 pretrained models
                 model_path_for_si = os.path.join(args.models_dir, "models_for_mv")
-            else:
-                model_path_for_si = base_model_path
             
-        diff_model_performance = si_function(
+        si_function(
             base_model_path=model_path_for_si,
             num_rounds=args.si_rounds,
             batch_size=args.batch_size,
@@ -166,10 +168,10 @@ def main():
             vocab_size=vocab_size
         )
         
-        # Visualize results
-        fig = plot_accuracy_improvement(diff_model_performance)
-        fig.show()
-        log_wandb_chart(fig, "Model Accuracy Improvement")
+        # # Visualize results
+        # fig = plot_accuracy_improvement(diff_model_performance)
+        # fig.show()
+        # log_wandb_chart(fig, "Model Accuracy Improvement")
     
     # Close wandb
     wandb.finish()
