@@ -4,7 +4,7 @@ import torch
 import os
 from src.model import GPT
 from src.data import encode, decode
-from src.generation import generate
+from src.filter import generate
 from src.utils import load_model
 
 def parse_args():

@@ -8,7 +8,7 @@ from torch.amp import GradScaler
 from torch.amp import autocast
 from .model import GPT
 from .data import get_batch, generate_prompt_OOD
-from .generation import gen_si_data_mv, gen_si_data_no_filter, gen_si_data_length_filter
+from .filter import gen_si_data_mv, gen_si_data_no_filter, gen_si_data_length_filter
 from .training import train_base_model, estimate_loss
 from .evaluation import test_accuracy_on_digits, save_wrong_answers
 from .utils import set_seeds, save_model, load_model
@@ -31,29 +31,7 @@ def run_self_improvement_no_filter(
     device="cuda",
     vocab_size=14,
 ):
-    """
-    Run self-improvement process using the no-filter approach (optimized version).
-    
-    Args:
-        base_model_path (str): Path to the base model checkpoint.
-        num_rounds (int): Number of self-improvement rounds.
-        batch_size (int): Batch size.
-        block_size (int): Maximum sequence length.
-        n_embd (int): Embedding dimension.
-        n_head (int): Number of attention heads.
-        n_layer (int): Number of layers.
-        dropout (float): Dropout probability.
-        bias (bool): Whether to use bias.
-        si_iter (int): Number of iterations per self-improvement round.
-        decay (int): Learning rate decay steps.
-        data_dir (str): Data directory.
-        models_dir (str): Models directory.
-        device (str): Device to use.
-        vocab_size (int): Vocabulary size.
-        
-    Returns:
-        dict: Dictionary containing model performance across rounds.
-    """
+
     # Initialize the main model
     main_model = GPT(vocab_size, block_size, n_embd, n_layer, n_head, dropout, bias, device)
     
@@ -192,29 +170,7 @@ def run_self_improvement_length_filter(
     device="cuda",
     vocab_size=14,
 ):
-    """
-    Run self-improvement process using the no-filter approach (optimized version).
     
-    Args:
-        base_model_path (str): Path to the base model checkpoint.
-        num_rounds (int): Number of self-improvement rounds.
-        batch_size (int): Batch size.
-        block_size (int): Maximum sequence length.
-        n_embd (int): Embedding dimension.
-        n_head (int): Number of attention heads.
-        n_layer (int): Number of layers.
-        dropout (float): Dropout probability.
-        bias (bool): Whether to use bias.
-        si_iter (int): Number of iterations per self-improvement round.
-        decay (int): Learning rate decay steps.
-        data_dir (str): Data directory.
-        models_dir (str): Models directory.
-        device (str): Device to use.
-        vocab_size (int): Vocabulary size.
-        
-    Returns:
-        dict: Dictionary containing model performance across rounds.
-    """
     # Initialize the main model
     main_model = GPT(vocab_size, block_size, n_embd, n_layer, n_head, dropout, bias, device)
     

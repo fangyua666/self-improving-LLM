@@ -1,7 +1,7 @@
 # src/evaluation.py
 import torch
 import numpy as np
-from .generation import generate
+from .filter import generate
 
 def accuracy_print_one(model, num_digits, need_print=False, batch_size=1000, device='cuda'):
     """
