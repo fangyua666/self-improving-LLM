@@ -3,6 +3,9 @@ import os
 import random
 import numpy as np
 import torch
+import math
+import os
+import torch.nn.functional as F
 
 # Define vocabulary and tokens
 vocab = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '=', '&', '*', '+'] # remeber to delete '+' for the string copy task
@@ -89,6 +92,7 @@ def generate_prompt_OOD(si_round, task, original):
     if task == 'copy':
         strings = "".join(np.random.choice([str(i) for i in range(10)], size=si_round+original))
         prompt_str = f"{str(strings)}="  
+        
     elif task == 'reverse_addition':
         exp = original+si_round
         # print(exp)

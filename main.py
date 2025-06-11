@@ -9,7 +9,6 @@ from src.training import train_base_model, train_multiple_base_models
 from src.evaluation import test_accuracy_on_digits
 from src.utils import set_seeds, init_wandb, save_model, verify_directory
 from src.self_improvement import run_self_improvement_mv, run_self_improvement_no_filter, run_self_improvement_length_filter
-from src.visualization import plot_accuracy_improvement, log_wandb_chart
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Train and perform self-improvement on a GPT model for string copying")

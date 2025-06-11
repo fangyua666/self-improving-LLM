@@ -39,8 +39,12 @@ def gen_si_data_no_filter(
     max_lines_to_write=50000,
     data_dir="data"
 ):
-
-    output_path = os.path.join(data_dir, f"si_data_r{si_round}.txt")
+    
+    if task == 'copy':
+        output_path = os.path.join(data_dir, f"si_data_r{si_round-1}.txt")
+    elif task == 'reverse_addition':
+        output_path = os.path.join(data_dir, f"si_data_r{si_round}.txt")
+        
     num_batches = (num_samples) // batch_size + 1
     print(f"Generating {si_round} si data...")
     
@@ -97,8 +101,11 @@ def gen_si_data_length_filter(
     max_lines_to_write=50000,
     data_dir="data"
 ):
-    
-    output_path = os.path.join(data_dir, f"si_data_r{si_round}.txt")
+    if task == 'copy':
+        output_path = os.path.join(data_dir, f"si_data_r{si_round-1}.txt")
+    elif task == 'reverse_addition':
+        output_path = os.path.join(data_dir, f"si_data_r{si_round}.txt")
+        
     num_batches = (num_samples) // batch_size + 1
     print(f"Generating {si_round} si data...")
     
@@ -128,7 +135,11 @@ def gen_si_data_length_filter(
           prompt_tensor = prompt_tensor.unsqueeze(0)
 
         outputs = generate(model=model, idx=prompt_tensor, max_new_tokens=block_size, top_k=1)
-        outputs = [text for text in outputs if len(text[2*(si_round + 10) + 2:]) == (si_round + 10) or len(text[2*(si_round + 10) + 2:]) == (si_round+11)]
+        if task == 'copy':
+            # For copy task, we expect the output to be of length si_round + 10 or si_round + 11
+            outputs = [text for text in outputs if len(text[(si_round+11):]) == (si_round + 10)]
+        elif task == 'reverse_addition':
+            outputs = [text for text in outputs if len(text[2*(si_round + 10) + 2:]) == (si_round + 10) or len(text[2*(si_round + 10) + 2:]) == (si_round+11)]
 
 
         # 4. Write valid outputs to file, ensuring we do not exceed the target.
@@ -146,8 +157,7 @@ def gen_si_data_length_filter(
         final_lines = 0
         
     print(f"Writing complete. Total lines written: {final_lines}")
-    
-# Fix
+
 def gen_si_data_mv(
     models,
     si_round,
@@ -158,8 +168,11 @@ def gen_si_data_mv(
     max_lines_to_write=50000,
     data_dir="data"
 ):
-    
-    output_path = os.path.join(data_dir, f"si_data_r{si_round-1}.txt")
+    if task == 'copy':
+        output_path = os.path.join(data_dir, f"si_data_r{si_round-1}.txt")
+    elif task == 'reverse_addition':
+        output_path = os.path.join(data_dir, f"si_data_r{si_round}.txt")
+        
     num_batches = (num_samples) // batch_size + 1
     print(f"Generating SI data for round {si_round} with majority voting...")
 
@@ -167,7 +180,6 @@ def gen_si_data_mv(
     if os.path.exists(output_path):
         os.remove(output_path)
         
-
     for batch in range(num_batches):
         # Track how many lines have been written
         if os.path.exists(output_path):
@@ -197,7 +209,7 @@ def gen_si_data_mv(
             # Gather predictions for the i-th prompt.
             predictions = [all_model_outputs[m_idx][i] for m_idx in range(len(models))]
             best_pred = string_majority_vote_filter(predictions, vote_threshold=vote_threshold)
-            if best_pred: #  and len(best_pred[(si_round+11):]) == (si_round+10) # NO length filtering now
+            if best_pred: 
                 valid_outputs.append(best_pred)
 
         # Write valid outputs to file, ensuring we do not exceed the target.
@@ -208,7 +220,7 @@ def gen_si_data_mv(
 
         if to_write:
             with open(output_path, "a", encoding="utf-8") as f:
-                f.writelines([line + "&\n" for line in to_write]) # KEY CHANGE
+                f.writelines([line + "&\n" for line in to_write]) 
 
         print(f"Batch {batch+1}/{num_batches}: {current_lines + len(to_write)}/{max_lines_to_write} lines written.")
 

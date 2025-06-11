@@ -11,18 +11,6 @@ import os
 from src.evaluation import test_accuracy_on_digits
 
 def create_optimizer_and_scheduler(model, total_steps, warmup_steps=0, decay_steps=0):
-    """
-    Create optimizer and learning rate scheduler.
-    
-    Args:
-        model: The model to optimize.
-        total_steps (int): Total number of steps.
-        warmup_steps (int): Number of warmup steps.
-        decay_steps (int): Number of decay steps.
-        
-    Returns:
-        tuple: Tuple of (optimizer, scheduler).
-    """
     # AdamW
     optimizer = torch.optim.AdamW(
         model.parameters(),
@@ -50,22 +38,8 @@ def create_optimizer_and_scheduler(model, total_steps, warmup_steps=0, decay_ste
     scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lr_lambda)
     return optimizer, scheduler
 
-def estimate_loss(data, model, eval_iters=100, batch_size=1024, block_size=60, device='cuda'):
-    """
-    Estimate the loss of a model on data.
-    
-    Args:
-        data: The data to evaluate on.
-        model: The model to evaluate.
-        eval_iters (int): Number of evaluation iterations.
-        get_batch_fn: Function to get batches.
-        batch_size (int): Batch size.
-        block_size (int): Maximum sequence length.
-        device (str): Device to place tensors on.
-        
-    Returns:
-        dict: Dictionary containing loss.
-    """
+def estimate_loss(data, model, eval_iters=100, batch_size=1024, block_size=100, device='cuda'):
+
     out = {}
     model.eval()
     losses = torch.zeros(eval_iters)
@@ -85,36 +59,21 @@ def train_base_model(
     n_head,
     dropout,
     bias=True,
-    max_iters=5000,
+    max_iters=10000, # change as needed
     eval_interval=100,
     data_path=None,
-    save_path=None,
-    device='cuda'
+    models_dir=None,
+    device='cuda',
+    task='reverse_addition', # or 'copy' for copy task
 ):
-    """
-    Train a base model.
     
-    Args:
-        vocab_size (int): Vocabulary size.
-        block_size (int): Maximum sequence length.
-        n_embd (int): Embedding dimension.
-        n_head (int): Number of attention heads.
-        n_layer (int): Number of layers.
-        dropout (float): Dropout probability.
-        bias (bool): Whether to use bias in linear layers.
-        max_iters (int): Maximum number of iterations.
-        eval_interval (int): Evaluation interval.
-        data_path (str): Path to the data file.
-        save_path (str): Path to save the model.
-        device (str): Device to use ('cuda' or 'cpu').
-    
-    Returns:
-        list: List of losses during training.
-    """
-    
+    if task == 'copy':
+        task_simplified = 'sc'
+    elif task == 'reverse_addition':
+        task_simplified = 'ra'
+        
     print(f"Start run pretrain train loop with {max_iters} steps and 500 warm, 1000 decay")
     
-    # INITIALIZE MODEL, OPTIMIZER, SCHEDULER
     model = GPT(vocab_size, block_size, n_embd, n_layer, n_head, dropout, bias=bias)
     model = model.to(device)
     
@@ -122,10 +81,8 @@ def train_base_model(
     with open(data_path, "r", encoding="utf-8") as f:
         data = f.readlines()
     
-    optimizer, scheduler = create_optimizer_and_scheduler(model, max_iters, 500, 1000)
+    optimizer, scheduler = create_optimizer_and_scheduler(model, max_iters, 1000, 2000) # Change the warmup and decay steps as needed
     
-    # TRAINING LOOP:
-    # Print the number of parameters in the model
     print(sum(p.numel() for p in model.parameters())/1e6, 'M parameters')
     loss_list = []
     
@@ -161,9 +118,10 @@ def train_base_model(
     print(f"Average accuracy: {acc}")
     
     # Save the model
-    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    filename = f"{task_simplified}_model_0.pt"
+    save_path = os.path.join(models_dir, filename)
     torch.save(model.state_dict(), save_path)
-    print(f"Saved best model at {save_path}")
+    print(f"Saved model at {save_path}")
     
     return model
 
@@ -175,51 +133,34 @@ def train_multiple_base_models(
     n_head, 
     dropout, 
     bias=True, 
-    max_iters=5000, 
+    max_iters=10000, # change as needed
     eval_interval=100, 
     data_path=None,
     models_dir=None, 
-    device='cuda'
+    device='cuda',
+    task='reverse_addition' 
 ):
-    """
-    Train 5 base models with different seeds for majority voting.
-    
-    Args:
-        vocab_size (int): Vocabulary size.
-        block_size (int): Maximum sequence length.
-        n_embd (int): Embedding dimension.
-        n_head (int): Number of attention heads.
-        n_layer (int): Number of layers.
-        dropout (float): Dropout probability.
-        bias (bool): Whether to use bias in linear layers.
-        max_iters (int): Maximum training iterations.
-        eval_interval (int): Evaluation interval.
-        data_path (str): Path to the data file.
-        models_dir (str): Directory to save models.
-        device (str): Device to use.
-    """
-    
-    print(f"Start run pretrain train loop with {max_iters} steps and 500 warm, 1000 decay")
+    if task == 'copy':
+        task_simplified = 'sc'
+    elif task == 'reverse_addition':
+        task_simplified = 'ra'
+
     print("This is the base model training loop for the 5 pretrained models used in majority voting")
     
-    # Load data
     with open(data_path, "r", encoding="utf-8") as f:
         data = f.readlines()
     
-    seeds = [42, 123, 456, 789, 1024]
+    seeds = [22, 12345, 23456, 789, 1024]
     
     for i in range(1, 6):
         current_seed = seeds[i-1]
         set_seeds(current_seed)
         print(f"Training model {i} with seed {current_seed}")
-        
-        # INITIALIZE MODEL, OPTIMIZER, SCHEDULER
+
         model = GPT(vocab_size, block_size, n_embd, n_layer, n_head, dropout, bias=bias)
         model = model.to(device)
-        optimizer, scheduler = create_optimizer_and_scheduler(model, max_iters, 500, 1000)
+        optimizer, scheduler = create_optimizer_and_scheduler(model, max_iters, 1000, 2000) # Change the warmup and decay steps as needed
         
-        # TRAINING LOOP:
-        # Print the number of parameters in the model
         print(sum(p.numel() for p in model.parameters())/1e6, 'M parameters')
         loss_list = []
         
@@ -254,7 +195,7 @@ def train_multiple_base_models(
         acc = test_accuracy_on_digits(model, 11)
         print(f"Average accuracy: {acc}")
         
-        filename = f"sc_model_0_{i}.pt"
+        filename = f"{task_simplified}_model_0_{i}.pt"
         save_path = os.path.join(models_dir, filename)
         torch.save(model.state_dict(), save_path)
         print(f"Saved model at {save_path}")
