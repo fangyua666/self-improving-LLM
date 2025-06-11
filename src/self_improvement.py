@@ -182,7 +182,8 @@ def run_self_improvement_mv(
     models_dir="models",
     device="cuda",
     vocab_size=14,
-    task='copy' 
+    task='copy',
+    filter=None
 ):
     if task == 'copy':
         task_simplified = 'sc'
